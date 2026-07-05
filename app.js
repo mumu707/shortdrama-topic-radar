@@ -1697,6 +1697,10 @@ function fillSelect(id, values) {
 function readJSON(key, fallback) {
   try {
     const value = localStorage.getItem(key);
+    if (value && value.length > 2500000) {
+      localStorage.removeItem(key);
+      return fallback;
+    }
     return value ? JSON.parse(value) : fallback;
   } catch {
     return fallback;
@@ -1705,7 +1709,13 @@ function readJSON(key, fallback) {
 
 function writeJSON(key, value) {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    const serialized = JSON.stringify(value);
+    if (serialized.length > 2500000) {
+      localStorage.removeItem(key);
+      console.warn(`本地缓存过大，已跳过写入：${key}`);
+      return;
+    }
+    localStorage.setItem(key, serialized);
   } catch (error) {
     console.warn(`本地缓存写入失败：${key}`, error);
   }
