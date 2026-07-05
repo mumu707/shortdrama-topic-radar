@@ -15,17 +15,32 @@ const defaultSettings = {
   useSampleData: false,
 };
 
-const categories = [
+const MAX_RENDERED_TOPICS = 300;
+
+const defaultCategories = [
   "全部",
-  "动漫",
-  "游戏",
-  "影视",
-  "二次元",
-  "明星/IP",
-  "社会情绪",
+  "微恐",
   "恋爱婚姻",
-  "家庭伦理",
-  "逆袭复仇",
+  "港漫",
+  "赌片系列",
+  "偶像养成",
+  "星际科幻",
+  "穿书穿越",
+  "架空题材IP宇宙",
+  "美剧古装传记",
+  "体育竞技",
+  "盗墓探险解谜",
+  "吸血鬼狼人",
+  "权谋微欧美",
+  "鲨鱼游戏系列",
+  "神话传记",
+  "中国正统武侠",
+  "现代战争竞技",
+  "游戏3A",
+  "宝可梦系列",
+  "电影美剧",
+  "惊悚刺激",
+  "黑社会卧底",
 ];
 
 const baseTopics = [
@@ -345,8 +360,8 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function hydrateControls() {
-  fillSelect("categoryFilter", categories);
-  fillSelect("platformFilter", ["全部", "抖音"]);
+  fillSelect("categoryFilter", getCategoryOptions());
+  fillSelect("platformFilter", getPlatformOptions());
   fillSelect("heatFilter", ["全部", "破圈", "高热度", "中热度"]);
   fillSelect("timeFilter", ["全部", "24小时内", "3天内", "7天内"]);
   fillSelect("ideaStatusFilter", ["全部", "待评审", "已通过", "需修改"]);
@@ -593,7 +608,7 @@ function renderDashboard() {
     .map(renderTopicCard)
     .join("");
 
-  const grouped = categories
+  const grouped = getCategoryOptions()
     .filter((category) => category !== "全部")
     .map((category) => {
       const items = topics.filter((topic) => topic.category === category);
@@ -642,11 +657,15 @@ function renderDashboard() {
 
 function renderTopics() {
   const results = filterTopics();
-  document.querySelector("#resultCount").textContent = `${results.length} 个话题`;
+  const visibleResults = results.slice(0, MAX_RENDERED_TOPICS);
+  document.querySelector("#resultCount").textContent =
+    results.length > MAX_RENDERED_TOPICS
+      ? `${results.length} 个话题，显示前 ${MAX_RENDERED_TOPICS} 条`
+      : `${results.length} 个话题`;
   const selectedStillVisible = results.some((topic) => topic.id === selectedTopicId);
   if (!selectedStillVisible && results[0]) selectedTopicId = results[0].id;
 
-  document.querySelector("#topicList").innerHTML = results
+  document.querySelector("#topicList").innerHTML = visibleResults
     .map(
       (topic) => `
         <button class="topic-list-item ${topic.id === selectedTopicId ? "active" : ""}" data-topic="${topic.id}">
@@ -1224,6 +1243,22 @@ function buildTopicCollection() {
   return [...importedTopics, ...(settings.useSampleData ? baseTopics : [])];
 }
 
+function getCategoryOptions() {
+  const dataCategories = topics
+    .map((topic) => topic.category)
+    .filter(Boolean)
+    .filter((category) => category !== "全部");
+  return ["全部", ...new Set([...defaultCategories.filter((category) => category !== "全部"), ...dataCategories])];
+}
+
+function getPlatformOptions() {
+  const dataPlatforms = topics
+    .map((topic) => topic.platform)
+    .filter(Boolean)
+    .filter((platform) => platform !== "全部");
+  return ["全部", ...new Set(["抖音", ...dataPlatforms])];
+}
+
 function importZoneText(raw, sourceName) {
   const rows = parseZoneRows(raw);
   return importZoneRows(rows, sourceName);
@@ -1392,7 +1427,7 @@ function normalizeZoneRow(row, index) {
     rank,
     rankChange,
     source: readField(row, ["source", "来源", "数据来源"]) || "专区导入",
-    sourceAuth: "专区授权",
+    sourceAuth: readField(row, ["sourceAuth", "source_auth", "授权状态", "数据口径"]) || "专区授权",
     collectedAt,
     firstSeenDays: normalizeNumber(readField(row, ["firstSeenDays", "出现天数", "首见天数"])) || 1,
     trend: buildImportedTrend(heat, rankChange),
@@ -1436,7 +1471,7 @@ function normalizeNumber(value) {
 
 function inferCategory(title, row) {
   const text = `${title} ${Object.values(row).join(" ")}`;
-  const matched = categories.find((category) => category !== "全部" && text.includes(category));
+  const matched = getCategoryOptions().find((category) => category !== "全部" && text.includes(category));
   return matched || "社会情绪";
 }
 
@@ -1498,8 +1533,9 @@ function createDailySnapshot(reason) {
       imported: importedTopics.length,
       sample: settings.useSampleData ? baseTopics.length : 0,
       breakthrough: topics.filter(isBreakthrough).length,
+      snapshotItems: Math.min(topics.length, 1000),
     },
-    topics: topics.map((topic) => ({
+    topics: topics.slice(0, 1000).map((topic) => ({
       id: topic.id,
       title: topic.title,
       category: topic.category,
@@ -1665,7 +1701,11 @@ function readJSON(key, fallback) {
 }
 
 function writeJSON(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn(`本地缓存写入失败：${key}`, error);
+  }
 }
 
 function toast(message) {
