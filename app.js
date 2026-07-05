@@ -9,7 +9,7 @@ const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
 const defaultSettings = {
   playThreshold: 500000000,
   heatThreshold: 86000,
-  sourceUrl: "./data/topics.csv",
+  sourceUrl: "./data/douyin-topics.csv",
   sourceKind: "csv",
   autoSyncSource: true,
   useSampleData: false,
@@ -312,11 +312,12 @@ const baseTopics = [
 
 const storedSettings = readJSON("radarSettings", {});
 const hasStoredSourceUrl = typeof storedSettings.sourceUrl === "string" && storedSettings.sourceUrl.trim().length > 0;
+const hasCustomSourceUrl = hasStoredSourceUrl && storedSettings.sourceUrl.trim() !== "./data/topics.csv";
 let settings = { ...defaultSettings, ...storedSettings };
-settings.useSampleData = hasStoredSourceUrl ? settings.useSampleData === true : defaultSettings.useSampleData;
-settings.sourceUrl = hasStoredSourceUrl ? storedSettings.sourceUrl.trim() : defaultSettings.sourceUrl;
-settings.sourceKind = hasStoredSourceUrl ? settings.sourceKind || defaultSettings.sourceKind : defaultSettings.sourceKind;
-settings.autoSyncSource = hasStoredSourceUrl ? settings.autoSyncSource !== false : defaultSettings.autoSyncSource;
+settings.useSampleData = hasCustomSourceUrl ? settings.useSampleData === true : defaultSettings.useSampleData;
+settings.sourceUrl = hasCustomSourceUrl ? storedSettings.sourceUrl.trim() : defaultSettings.sourceUrl;
+settings.sourceKind = hasCustomSourceUrl ? settings.sourceKind || defaultSettings.sourceKind : defaultSettings.sourceKind;
+settings.autoSyncSource = hasCustomSourceUrl ? settings.autoSyncSource !== false : defaultSettings.autoSyncSource;
 let importedTopics = readJSON("radarImportedTopics", []);
 let importHistory = readJSON("radarImportHistory", []);
 let topicSnapshots = readJSON("radarTopicSnapshots", []);
@@ -675,7 +676,7 @@ function renderTopics() {
           </span>
           <span class="tag-row">${topic.tags.slice(0, 4).map((tag) => `<span class="tag">${tag}</span>`).join("")}</span>
           <span class="topic-stats">
-            <div><span>播放量</span><strong>${formatPlay(topic.playCount)}</strong></div>
+            <div><span>话题度/播放量</span><strong>${formatPlay(topic.playCount)}</strong></div>
             <div><span>影响力</span><strong>${yuan.format(topic.influenceIndex)}</strong></div>
             <div><span>排名变化</span><strong>+${topic.rankChange}</strong></div>
           </span>
@@ -718,9 +719,13 @@ function renderTopicDetail(topic) {
     </div>
     ${renderSparkline(topic.trend)}
     <div class="topic-stats">
-      <div><span>播放量口径</span><strong>${formatPlay(topic.playCount)}</strong></div>
+      <div><span>话题度/播放量</span><strong>${formatPlay(topic.playCount)}</strong></div>
       <div><span>影响力指数</span><strong>${yuan.format(topic.influenceIndex)}</strong></div>
       <div><span>榜单排名</span><strong>#${topic.rank} / +${topic.rankChange}</strong></div>
+    </div>
+    <div class="analysis-block">
+      <h3>数据来源</h3>
+      <p>${topic.source}；口径：${topic.sourceAuth}；采集时间：${dateFormatter.format(new Date(topic.collectedAt))}</p>
     </div>
     <div class="analysis-block">
       <h3>用户情绪摘要</h3>
@@ -919,7 +924,7 @@ function renderTopicCard(topic) {
       <div class="badge-row">${renderBreakBadge(topic)}<span class="badge">${topic.category}</span></div>
       ${renderSparkline(topic.trend)}
       <div class="topic-stats">
-        <div><span>播放量</span><strong>${formatPlay(topic.playCount)}</strong></div>
+        <div><span>话题度/播放量</span><strong>${formatPlay(topic.playCount)}</strong></div>
         <div><span>影响力</span><strong>${yuan.format(topic.influenceIndex)}</strong></div>
         <div><span>排名</span><strong>#${topic.rank}</strong></div>
       </div>
@@ -991,7 +996,7 @@ function isBreakthrough(topic) {
 
 function renderBreakBadge(topic) {
   if (!isBreakthrough(topic)) return `<span class="badge">观察</span>`;
-  if (typeof topic.playCount === "number") return `<span class="badge break">播放量破圈</span>`;
+  if (typeof topic.playCount === "number") return `<span class="badge break">话题度破圈</span>`;
   return `<span class="badge index">指数破圈</span>`;
 }
 
@@ -1134,7 +1139,7 @@ function buildAlerts() {
       id: `alert-${topic.id}-${settings.playThreshold}-${settings.heatThreshold}`,
       topicId: topic.id,
       icon: typeof topic.playCount === "number" ? "flame" : "activity",
-      title: `${topic.title} 达到${typeof topic.playCount === "number" ? "播放量" : "影响力指数"}破圈`,
+      title: `${topic.title} 达到${typeof topic.playCount === "number" ? "话题度/播放量" : "影响力指数"}破圈`,
       body: `${topic.category} · ${formatPlay(topic.playCount)} · 影响力 ${yuan.format(topic.influenceIndex)} · 排名提升 +${topic.rankChange}`,
     }));
 }

@@ -1,0 +1,31 @@
+{
+  "updatedAt": "2026-07-05T14:35:00+08:00",
+  "datasets": [
+    {
+      "file": "data/douyin-topics.csv",
+      "status": "active-default",
+      "source": "用户提供截图：抖音 App 搜索页「三角洲」话题 Tab",
+      "collectionMethod": "人工从截图读取话题名与页面可见播放量",
+      "metricFields": {
+        "playCount": "截图页面展示的“亿次播放”，例如 657.7亿",
+        "heat": "站内排序占位分，不等同抖音官方热度",
+        "influenceIndex": "站内排序占位分，不等同抖音官方指数"
+      },
+      "compliance": "截图来源由用户提供；后续正式批量数据应使用专区导出、授权数据 API 或官方接口。",
+      "verification": "已按 CSV 字段校验：9 行、播放量字段可解析、来源口径完整。"
+    },
+    {
+      "file": "data/topics.csv",
+      "status": "internal-topic-bank",
+      "source": "根据用户提供的分类脑图图片扩展生成的内部选题题库",
+      "collectionMethod": "内部分类扩展生成，不是抖音真实热度数据",
+      "metricFields": {
+        "playCount": "空值，不作为真实播放量",
+        "heat": "站内题库排序占位分",
+        "influenceIndex": "站内题库排序占位分"
+      },
+      "compliance": "仅用于编剧选题搜索和垂类扩展，不用于宣称真实话题播放量。",
+      "verification": "已按 CSV 字段校验：22000 行、22 类、每类 1000、无重复标题、无伪播放量。"
+    }
+  ]
+}
