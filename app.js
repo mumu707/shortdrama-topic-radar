@@ -953,7 +953,7 @@ function renderIdeaCard(card) {
 }
 
 function filterTopics() {
-  const keyword = state.keyword.toLowerCase();
+  const keywords = state.keyword.toLowerCase().split(/\s+/).filter(Boolean);
   return topics.filter((topic) => {
     const haystack = [
       topic.title,
@@ -965,7 +965,7 @@ function filterTopics() {
     ]
       .join(" ")
       .toLowerCase();
-    const keywordMatch = !keyword || haystack.includes(keyword);
+    const keywordMatch = keywords.length === 0 || keywords.every((keyword) => haystack.includes(keyword));
     const categoryMatch = state.category === "全部" || topic.category === state.category;
     const platformMatch = state.platform === "全部" || topic.platform === state.platform;
     const heatMatch =
@@ -1414,6 +1414,9 @@ function normalizeZoneRow(row, index) {
   const rank = normalizeNumber(readField(row, ["rank", "排名", "榜单排名"])) || index + 1;
   const rankChange = normalizeNumber(readField(row, ["rankChange", "rank_change", "排名变化", "上升名次"])) || 0;
   const collectedAt = readField(row, ["collectedAt", "collected_at", "采集时间", "导出时间"]) || new Date().toISOString();
+  const source = readField(row, ["source", "来源", "数据来源"]) || "专区导入";
+  const sourceAuth = readField(row, ["sourceAuth", "source_auth", "授权状态", "数据口径"]) || "专区授权";
+  const isInternalBank = sourceAuth.includes("非热度口径");
   const id = `zone-${stableSlug(title)}-${Date.now()}-${index}`;
   return {
     id,
@@ -1426,17 +1429,17 @@ function normalizeZoneRow(row, index) {
     influenceIndex,
     rank,
     rankChange,
-    source: readField(row, ["source", "来源", "数据来源"]) || "专区导入",
-    sourceAuth: readField(row, ["sourceAuth", "source_auth", "授权状态", "数据口径"]) || "专区授权",
+    source,
+    sourceAuth,
     collectedAt,
     firstSeenDays: normalizeNumber(readField(row, ["firstSeenDays", "出现天数", "首见天数"])) || 1,
     trend: buildImportedTrend(heat, rankChange),
     sentiment:
       readField(row, ["sentiment", "情绪摘要", "用户情绪"]) ||
-      "专区导入话题，建议结合评论样本补充用户情绪、争议点和共鸣关键词。",
+      (isInternalBank ? "内部分类题库，未接入真实用户情绪。" : "专区导入话题，建议结合评论样本补充用户情绪、争议点和共鸣关键词。"),
     opportunity:
       readField(row, ["opportunity", "改编机会", "短剧机会"]) ||
-      `可围绕「${title}」提炼身份落差、强冲突和前三集反转，生成短剧选题卡后再细化人物关系。`,
+      (isInternalBank ? "可作为垂类检索和选题发散，真实热度需用专区数据复核。" : `可围绕「${title}」提炼身份落差、强冲突和前三集反转，生成短剧选题卡后再细化人物关系。`),
     related: normalizeTags(readField(row, ["related", "相关话题", "话题簇"])).slice(0, 4),
     videos: normalizeTags(readField(row, ["videos", "代表内容", "代表视频"])).slice(0, 4),
     risks: normalizeTags(readField(row, ["risks", "风险", "风险提示"])).slice(0, 4),
