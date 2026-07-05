@@ -295,11 +295,13 @@ const baseTopics = [
   },
 ];
 
-let settings = { ...defaultSettings, ...readJSON("radarSettings", {}) };
-settings.useSampleData = settings.useSampleData === true;
-settings.sourceUrl = settings.sourceUrl || defaultSettings.sourceUrl;
-settings.sourceKind = settings.sourceKind || defaultSettings.sourceKind;
-settings.autoSyncSource = settings.autoSyncSource !== false;
+const storedSettings = readJSON("radarSettings", {});
+const hasStoredSourceUrl = typeof storedSettings.sourceUrl === "string" && storedSettings.sourceUrl.trim().length > 0;
+let settings = { ...defaultSettings, ...storedSettings };
+settings.useSampleData = hasStoredSourceUrl ? settings.useSampleData === true : defaultSettings.useSampleData;
+settings.sourceUrl = hasStoredSourceUrl ? storedSettings.sourceUrl.trim() : defaultSettings.sourceUrl;
+settings.sourceKind = hasStoredSourceUrl ? settings.sourceKind || defaultSettings.sourceKind : defaultSettings.sourceKind;
+settings.autoSyncSource = hasStoredSourceUrl ? settings.autoSyncSource !== false : defaultSettings.autoSyncSource;
 let importedTopics = readJSON("radarImportedTopics", []);
 let importHistory = readJSON("radarImportHistory", []);
 let topicSnapshots = readJSON("radarTopicSnapshots", []);
