@@ -680,6 +680,10 @@ textarea {
 }
 
 .small-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   min-height: 34px;
   padding: 0 10px;
   border: 1px solid var(--line);
@@ -756,6 +760,93 @@ textarea {
   color: #4d473f;
   font-size: 13px;
   line-height: 1.55;
+}
+
+.file-import {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px dashed #b9ad9a;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--blue);
+  overflow: hidden;
+}
+
+.file-import input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.button-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.button-stack .small-action,
+.card-actions .small-action {
+  justify-content: center;
+}
+
+.import-report,
+.data-health,
+.history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.import-report {
+  margin-top: 14px;
+}
+
+.report-grid,
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.report-item,
+.health-item,
+.history-item {
+  padding: 10px;
+  border: 1px solid #e8e1d6;
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.report-item span,
+.health-item span,
+.history-item span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.report-item strong,
+.health-item strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 18px;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.history-item p {
+  margin: 4px 0 0;
+  color: #4d473f;
+  font-size: 13px;
 }
 
 .source-item {
@@ -911,7 +1002,10 @@ textarea {
   .idea-grid,
   .idea-toolbar,
   .settings-form,
-  .import-grid {
+  .import-grid,
+  .report-grid,
+  .health-grid,
+  .history-item {
     grid-template-columns: 1fr;
   }
 

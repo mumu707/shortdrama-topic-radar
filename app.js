@@ -291,9 +291,13 @@ const baseTopics = [
   },
 ];
 
-let importedTopics = readJSON("radarImportedTopics", []);
-let topics = [...importedTopics, ...baseTopics];
 let settings = readJSON("radarSettings", defaultSettings);
+settings.useSampleData = settings.useSampleData !== false;
+let importedTopics = readJSON("radarImportedTopics", []);
+let importHistory = readJSON("radarImportHistory", []);
+let topicSnapshots = readJSON("radarTopicSnapshots", []);
+let latestImportReport = readJSON("radarLatestImportReport", null);
+let topics = buildTopicCollection();
 let favorites = new Set(readJSON("radarFavorites", ["t1", "t7", "t9"]));
 let selectedTopicId = "t1";
 let alertsRead = new Set(readJSON("radarAlertsRead", []));
@@ -417,6 +421,7 @@ function bindEvents() {
     settings = {
       playThreshold: Number(document.querySelector("#playThreshold").value || defaultSettings.playThreshold),
       heatThreshold: Number(document.querySelector("#heatThreshold").value || defaultSettings.heatThreshold),
+      useSampleData: settings.useSampleData,
     };
     writeJSON("radarSettings", settings);
     renderAll();
@@ -424,24 +429,36 @@ function bindEvents() {
   });
 
   document.querySelector("#refreshButton").addEventListener("click", () => {
-    toast("已模拟完成专区数据导入后的清洗、快照和告警刷新。");
+    createDailySnapshot("手动刷新");
+    toast("已完成本地数据快照、破圈判断和告警刷新。");
     renderAll();
   });
 
   document.querySelector("#importZoneData").addEventListener("click", () => {
     const input = document.querySelector("#zoneImportInput");
     try {
-      const parsed = parseZoneImport(input.value);
-      if (parsed.length === 0) {
+      const report = importZoneText(input.value, "粘贴导入");
+      if (report.accepted === 0) {
         toast("没有可导入的数据，请粘贴 JSON 或 CSV 内容。");
         return;
       }
-      importedTopics = mergeImportedTopics(importedTopics, parsed);
-      topics = [...importedTopics, ...baseTopics];
-      writeJSON("radarImportedTopics", importedTopics);
       input.value = "";
       renderAll();
-      toast(`已导入 ${parsed.length} 条专区话题，并完成破圈判断。`);
+      toast(`已导入 ${report.accepted} 条专区话题，更新 ${report.updated} 条。`);
+    } catch (error) {
+      toast(error.message);
+    }
+  });
+
+  document.querySelector("#zoneImportFile").addEventListener("change", async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const report = importZoneText(text, file.name);
+      event.target.value = "";
+      renderAll();
+      toast(`已读取 ${file.name}，导入 ${report.accepted} 条话题。`);
     } catch (error) {
       toast(error.message);
     }
@@ -449,10 +466,38 @@ function bindEvents() {
 
   document.querySelector("#clearImportedTopics").addEventListener("click", () => {
     importedTopics = [];
-    topics = [...baseTopics];
+    topics = buildTopicCollection();
+    latestImportReport = {
+      sourceName: "清空导入",
+      totalRows: 0,
+      accepted: 0,
+      inserted: 0,
+      updated: 0,
+      skipped: 0,
+      breakthrough: topics.filter(isBreakthrough).length,
+      errors: [],
+      createdAt: new Date().toISOString(),
+    };
     writeJSON("radarImportedTopics", importedTopics);
+    writeJSON("radarLatestImportReport", latestImportReport);
     renderAll();
-    toast("已清空专区导入数据，保留内置演示样本。");
+    toast(settings.useSampleData ? "已清空专区导入数据，保留内置演示样本。" : "已清空专区导入数据。");
+  });
+
+  document.querySelector("#downloadTemplate").addEventListener("click", downloadImportTemplate);
+  document.querySelector("#exportTopicsJson").addEventListener("click", () => exportTopics("json"));
+  document.querySelector("#exportTopicsCsv").addEventListener("click", () => exportTopics("csv"));
+  document.querySelector("#toggleSampleData").addEventListener("click", () => {
+    settings.useSampleData = !settings.useSampleData;
+    writeJSON("radarSettings", settings);
+    topics = buildTopicCollection();
+    renderAll();
+    toast(settings.useSampleData ? "已开启演示样本。" : "已关闭演示样本，仅显示专区导入数据。");
+  });
+  document.querySelector("#createSnapshot").addEventListener("click", () => {
+    createDailySnapshot("手动快照");
+    renderAll();
+    toast("已生成当前话题快照。");
   });
 
   document.querySelector("#markAlertsRead").addEventListener("click", () => {
@@ -483,6 +528,9 @@ function renderAll() {
   renderIdeas();
   renderAlerts();
   renderAdmin();
+  renderImportReport();
+  renderDataHealth();
+  renderImportHistory();
   createIcons();
 }
 
@@ -679,7 +727,8 @@ function renderAdmin() {
   const sources = [
     ["区", "抖音专区导出", "专区授权", `${importedTopics.length} 条已导入`],
     ["授", "授权补充数据", "已授权", "播放/互动补充"],
-    ["人", "巨量算数/内部研究补录", "内部授权", "人工补录"],
+    ["样", "内置演示样本", settings.useSampleData ? "已启用" : "已关闭", `${baseTopics.length} 条样本`],
+    ["快", "本地快照库", "浏览器存储", `${topicSnapshots.length} 次快照`],
   ];
   document.querySelector("#sourceList").innerHTML = sources
     .map(
@@ -688,6 +737,73 @@ function renderAdmin() {
           <span class="source-logo">${source[0]}</span>
           <span><strong>${source[1]}</strong><small>${source[2]}</small></span>
           <span class="tag">${source[3]}</span>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderImportReport() {
+  const node = document.querySelector("#importReport");
+  if (!node) return;
+  if (!latestImportReport) {
+    node.innerHTML = `
+      <div class="report-grid">
+        <div class="report-item"><span>导入状态</span><strong>待导入</strong></div>
+        <div class="report-item"><span>专区话题</span><strong>${importedTopics.length}</strong></div>
+        <div class="report-item"><span>当前话题</span><strong>${topics.length}</strong></div>
+        <div class="report-item"><span>破圈话题</span><strong>${topics.filter(isBreakthrough).length}</strong></div>
+      </div>
+    `;
+    return;
+  }
+  node.innerHTML = `
+    <div class="report-grid">
+      <div class="report-item"><span>读取行数</span><strong>${latestImportReport.totalRows}</strong></div>
+      <div class="report-item"><span>成功导入</span><strong>${latestImportReport.accepted}</strong></div>
+      <div class="report-item"><span>更新/新增</span><strong>${latestImportReport.updated}/${latestImportReport.inserted}</strong></div>
+      <div class="report-item"><span>跳过/破圈</span><strong>${latestImportReport.skipped}/${latestImportReport.breakthrough}</strong></div>
+    </div>
+    ${
+      latestImportReport.errors.length
+        ? `<div class="analysis-block"><h3>校验提示</h3><p>${latestImportReport.errors.slice(0, 5).join("；")}</p></div>`
+        : ""
+    }
+  `;
+}
+
+function renderDataHealth() {
+  const node = document.querySelector("#dataHealth");
+  if (!node) return;
+  const latestSnapshot = topicSnapshots[0];
+  const storageBytes = roughStorageBytes();
+  node.innerHTML = `
+    <div class="health-grid">
+      <div class="health-item"><span>数据模式</span><strong>${settings.useSampleData ? "专区+样本" : "仅专区"}</strong></div>
+      <div class="health-item"><span>本地占用</span><strong>${formatBytes(storageBytes)}</strong></div>
+      <div class="health-item"><span>最近快照</span><strong>${latestSnapshot ? dateFormatter.format(new Date(latestSnapshot.createdAt)) : "暂无"}</strong></div>
+      <div class="health-item"><span>收藏话题</span><strong>${favorites.size}</strong></div>
+    </div>
+  `;
+}
+
+function renderImportHistory() {
+  const node = document.querySelector("#importHistory");
+  if (!node) return;
+  if (importHistory.length === 0) {
+    node.innerHTML = `<div class="history-item"><div><strong>暂无导入记录</strong><p>粘贴或选择专区文件后会自动生成记录。</p></div><span class="tag">empty</span></div>`;
+    return;
+  }
+  node.innerHTML = importHistory
+    .slice(0, 8)
+    .map(
+      (item) => `
+        <article class="history-item">
+          <div>
+            <strong>${item.sourceName}</strong>
+            <p>${dateFormatter.format(new Date(item.createdAt))} · 读取 ${item.totalRows} 行 · 导入 ${item.accepted} · 新增 ${item.inserted} · 更新 ${item.updated} · 跳过 ${item.skipped}</p>
+          </div>
+          <span class="tag">${item.breakthrough} 破圈</span>
         </article>
       `,
     )
@@ -926,11 +1042,51 @@ function buildAlerts() {
     }));
 }
 
-function parseZoneImport(raw) {
-  const text = raw.trim();
+function buildTopicCollection() {
+  return [...importedTopics, ...(settings.useSampleData ? baseTopics : [])];
+}
+
+function importZoneText(raw, sourceName) {
+  const rows = parseZoneRows(raw);
+  const errors = [];
+  const normalized = rows
+    .map((row, index) => {
+      const topic = normalizeZoneRow(row, index);
+      if (!topic) errors.push(`第 ${index + 1} 行缺少标题，已跳过`);
+      return topic;
+    })
+    .filter(Boolean);
+  const mergeResult = mergeImportedTopicsDetailed(importedTopics, normalized);
+  importedTopics = mergeResult.topics;
+  topics = buildTopicCollection();
+  const report = {
+    sourceName,
+    totalRows: rows.length,
+    accepted: normalized.length,
+    inserted: mergeResult.inserted,
+    updated: mergeResult.updated,
+    skipped: rows.length - normalized.length,
+    breakthrough: normalized.filter(isBreakthrough).length,
+    errors,
+    createdAt: new Date().toISOString(),
+  };
+  latestImportReport = report;
+  importHistory = [report, ...importHistory].slice(0, 30);
+  writeJSON("radarImportedTopics", importedTopics);
+  writeJSON("radarImportHistory", importHistory);
+  writeJSON("radarLatestImportReport", latestImportReport);
+  createDailySnapshot(`导入：${sourceName}`);
+  return report;
+}
+
+function parseZoneRows(raw) {
+  const text = String(raw || "").trim();
   if (!text) return [];
-  const rows = text.startsWith("[") || text.startsWith("{") ? parseZoneJSON(text) : parseZoneCSV(text);
-  return rows.map(normalizeZoneRow).filter(Boolean);
+  return text.startsWith("[") || text.startsWith("{") ? parseZoneJSON(text) : parseZoneCSV(text);
+}
+
+function parseZoneImport(raw) {
+  return parseZoneRows(raw).map(normalizeZoneRow).filter(Boolean);
 }
 
 function parseZoneJSON(text) {
@@ -1070,6 +1226,139 @@ function mergeImportedTopics(existing, incoming) {
     map.set(`${topic.title}::${topic.category}`, topic);
   });
   return [...map.values()];
+}
+
+function mergeImportedTopicsDetailed(existing, incoming) {
+  const map = new Map(existing.map((topic) => [`${topic.title}::${topic.category}`, topic]));
+  let inserted = 0;
+  let updated = 0;
+  incoming.forEach((topic) => {
+    const key = `${topic.title}::${topic.category}`;
+    const previous = map.get(key);
+    if (previous) {
+      updated += 1;
+      map.set(key, {
+        ...previous,
+        ...topic,
+        id: previous.id,
+        importedAt: new Date().toISOString(),
+      });
+    } else {
+      inserted += 1;
+      map.set(key, {
+        ...topic,
+        importedAt: new Date().toISOString(),
+      });
+    }
+  });
+  return { topics: [...map.values()], inserted, updated };
+}
+
+function createDailySnapshot(reason) {
+  const snapshot = {
+    id: `snapshot-${Date.now()}`,
+    reason,
+    createdAt: new Date().toISOString(),
+    totals: {
+      all: topics.length,
+      imported: importedTopics.length,
+      sample: settings.useSampleData ? baseTopics.length : 0,
+      breakthrough: topics.filter(isBreakthrough).length,
+    },
+    topics: topics.map((topic) => ({
+      id: topic.id,
+      title: topic.title,
+      category: topic.category,
+      heat: topic.heat,
+      playCount: topic.playCount,
+      influenceIndex: topic.influenceIndex,
+      rank: topic.rank,
+      rankChange: topic.rankChange,
+      collectedAt: topic.collectedAt,
+    })),
+  };
+  topicSnapshots = [snapshot, ...topicSnapshots].slice(0, 30);
+  writeJSON("radarTopicSnapshots", topicSnapshots);
+  return snapshot;
+}
+
+function downloadImportTemplate() {
+  const csv = [
+    "title,category,heat,playCount,influenceIndex,rank,rankChange,tags,sentiment,opportunity,risks",
+    "\"国漫复仇新话题\",动漫,92000,5.6亿,91000,3,19,\"国漫,复仇,女强\",\"评论区集中讨论反击和成长\",\"可改编为女主觉醒复仇短剧\",\"版权/IP,暴力尺度\"",
+  ].join("\n");
+  downloadText(`topic-import-template-${new Date().toISOString().slice(0, 10)}.csv`, csv, "text/csv;charset=utf-8");
+}
+
+function exportTopics(format) {
+  const rows = topics.map(serializeTopic);
+  if (format === "csv") {
+    const headers = Object.keys(rows[0] || serializeTopic({}));
+    const csv = [headers.join(","), ...rows.map((row) => headers.map((header) => csvCell(row[header])).join(","))].join("\n");
+    downloadText(`topics-${new Date().toISOString().slice(0, 10)}.csv`, csv, "text/csv;charset=utf-8");
+    toast("话题 CSV 已导出。");
+    return;
+  }
+  downloadText(
+    `topics-${new Date().toISOString().slice(0, 10)}.json`,
+    JSON.stringify(rows, null, 2),
+    "application/json;charset=utf-8",
+  );
+  toast("话题 JSON 已导出。");
+}
+
+function serializeTopic(topic) {
+  return {
+    title: topic.title || "",
+    platform: topic.platform || "",
+    category: topic.category || "",
+    tags: Array.isArray(topic.tags) ? topic.tags.join("|") : "",
+    heat: topic.heat || 0,
+    playCount: topic.playCount || "",
+    influenceIndex: topic.influenceIndex || 0,
+    rank: topic.rank || "",
+    rankChange: topic.rankChange || 0,
+    source: topic.source || "",
+    sourceAuth: topic.sourceAuth || "",
+    collectedAt: topic.collectedAt || "",
+    sentiment: topic.sentiment || "",
+    opportunity: topic.opportunity || "",
+    risks: Array.isArray(topic.risks) ? topic.risks.join("|") : "",
+  };
+}
+
+function csvCell(value) {
+  const text = String(value ?? "");
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function downloadText(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function roughStorageBytes() {
+  return [
+    "radarImportedTopics",
+    "radarImportHistory",
+    "radarTopicSnapshots",
+    "radarStoryCards",
+    "radarSettings",
+    "radarFavorites",
+  ].reduce((total, key) => total + (localStorage.getItem(key) || "").length * 2, 0);
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function bindDynamicActions() {

@@ -221,9 +221,20 @@
                   <h3>导入规则</h3>
                   <p>必填字段只有标题，其他字段缺失时会使用默认值。标签可用中文逗号、英文逗号或竖线分隔。</p>
                   <p>导入数据会标记为“专区导入”，并保留采集时间。播放量超过 5 亿时按播放量破圈；没有播放量时按影响力指数阈值判断。</p>
+                  <label class="file-import">
+                    <i data-lucide="file-up"></i>
+                    <span>选择专区 CSV/JSON 文件</span>
+                    <input id="zoneImportFile" type="file" accept=".csv,.json,.txt,text/csv,application/json" />
+                  </label>
                   <button class="primary-button" id="importZoneData"><i data-lucide="upload"></i>导入专区数据</button>
+                  <div class="button-stack">
+                    <button class="small-action" id="downloadTemplate" type="button"><i data-lucide="table"></i>下载导入模板</button>
+                    <button class="small-action" id="exportTopicsJson" type="button"><i data-lucide="braces"></i>导出话题 JSON</button>
+                    <button class="small-action" id="exportTopicsCsv" type="button"><i data-lucide="file-spreadsheet"></i>导出话题 CSV</button>
+                  </div>
                 </div>
               </div>
+              <div class="import-report" id="importReport"></div>
             </section>
 
             <section class="panel">
@@ -234,6 +245,28 @@
                 </div>
               </div>
               <div class="source-list" id="sourceList"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-title">
+                <div>
+                  <h2>数据运行状态</h2>
+                  <p>本地持久化、快照和演示样本控制。</p>
+                </div>
+              </div>
+              <div class="data-health" id="dataHealth"></div>
+              <div class="card-actions">
+                <button class="small-action" id="toggleSampleData" type="button"><i data-lucide="database"></i>切换演示样本</button>
+                <button class="small-action" id="createSnapshot" type="button"><i data-lucide="camera"></i>生成快照</button>
+              </div>
+            </section>
+            <section class="panel wide">
+              <div class="panel-title">
+                <div>
+                  <h2>导入历史</h2>
+                  <p>记录每次专区导入、更新、跳过和破圈数量。</p>
+                </div>
+              </div>
+              <div class="history-list" id="importHistory"></div>
             </section>
             <section class="panel wide">
               <div class="panel-title">
