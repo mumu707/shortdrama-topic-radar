@@ -9,9 +9,10 @@ const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
 const defaultSettings = {
   playThreshold: 500000000,
   heatThreshold: 86000,
-  sourceUrl: "",
-  sourceKind: "auto",
-  autoSyncSource: false,
+  sourceUrl: "./data/topics.csv",
+  sourceKind: "csv",
+  autoSyncSource: true,
+  useSampleData: false,
 };
 
 const categories = [
@@ -294,11 +295,11 @@ const baseTopics = [
   },
 ];
 
-let settings = readJSON("radarSettings", defaultSettings);
-settings.useSampleData = settings.useSampleData !== false;
-settings.sourceUrl = settings.sourceUrl || "";
-settings.sourceKind = settings.sourceKind || "auto";
-settings.autoSyncSource = settings.autoSyncSource === true;
+let settings = { ...defaultSettings, ...readJSON("radarSettings", {}) };
+settings.useSampleData = settings.useSampleData === true;
+settings.sourceUrl = settings.sourceUrl || defaultSettings.sourceUrl;
+settings.sourceKind = settings.sourceKind || defaultSettings.sourceKind;
+settings.autoSyncSource = settings.autoSyncSource !== false;
 let importedTopics = readJSON("radarImportedTopics", []);
 let importHistory = readJSON("radarImportHistory", []);
 let topicSnapshots = readJSON("radarTopicSnapshots", []);
@@ -376,6 +377,8 @@ function bindEvents() {
     state.keyword = event.target.value.trim();
     document.querySelector("#globalSearch").value = state.keyword;
     document.querySelector("#keywordFilter").value = state.keyword;
+    setView("topics");
+    renderAll();
   });
 
   document.querySelector("#dashboardSearch").addEventListener("keydown", (event) => {
@@ -580,7 +583,7 @@ function renderDashboard() {
   const rising = [...topics].sort((a, b) => b.rankChange - a.rankChange);
   const reviewCards = storyCards.filter((card) => card.status === "待评审");
   document.querySelector("#metricBreakthrough").textContent = breakthrough.length;
-  document.querySelector("#metricRising").textContent = rising[0].rankChange;
+  document.querySelector("#metricRising").textContent = rising[0]?.rankChange || 0;
   document.querySelector("#metricReview").textContent = reviewCards.length;
 
   document.querySelector("#breakthroughStrip").innerHTML = breakthrough
