@@ -9,6 +9,9 @@ const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
 const defaultSettings = {
   playThreshold: 500000000,
   heatThreshold: 86000,
+  sourceUrl: "",
+  sourceKind: "auto",
+  autoSyncSource: false,
 };
 
 const categories = [
@@ -293,10 +296,14 @@ const baseTopics = [
 
 let settings = readJSON("radarSettings", defaultSettings);
 settings.useSampleData = settings.useSampleData !== false;
+settings.sourceUrl = settings.sourceUrl || "";
+settings.sourceKind = settings.sourceKind || "auto";
+settings.autoSyncSource = settings.autoSyncSource === true;
 let importedTopics = readJSON("radarImportedTopics", []);
 let importHistory = readJSON("radarImportHistory", []);
 let topicSnapshots = readJSON("radarTopicSnapshots", []);
 let latestImportReport = readJSON("radarLatestImportReport", null);
+let dataSourceStatus = readJSON("radarDataSourceStatus", null);
 let topics = buildTopicCollection();
 let favorites = new Set(readJSON("radarFavorites", ["t1", "t7", "t9"]));
 let selectedTopicId = "t1";
@@ -329,6 +336,9 @@ document.addEventListener("DOMContentLoaded", () => {
   bindEvents();
   renderAll();
   createIcons();
+  if (settings.autoSyncSource && settings.sourceUrl) {
+    syncConfiguredSource("打开自动同步", { silent: true });
+  }
 });
 
 function hydrateControls() {
@@ -340,6 +350,9 @@ function hydrateControls() {
   fillSelect("ownerFilter", ["全部", "林制片", "周编剧", "陈策划", "未分配"]);
   document.querySelector("#playThreshold").value = settings.playThreshold;
   document.querySelector("#heatThreshold").value = settings.heatThreshold;
+  document.querySelector("#dataSourceUrl").value = settings.sourceUrl;
+  document.querySelector("#dataSourceKind").value = settings.sourceKind;
+  document.querySelector("#autoSyncSource").checked = settings.autoSyncSource;
 }
 
 function bindEvents() {
@@ -354,8 +367,25 @@ function bindEvents() {
   document.querySelector("#globalSearch").addEventListener("input", (event) => {
     state.keyword = event.target.value.trim();
     document.querySelector("#keywordFilter").value = state.keyword;
+    document.querySelector("#dashboardSearch").value = state.keyword;
     setView("topics");
     renderAll();
+  });
+
+  document.querySelector("#dashboardSearch").addEventListener("input", (event) => {
+    state.keyword = event.target.value.trim();
+    document.querySelector("#globalSearch").value = state.keyword;
+    document.querySelector("#keywordFilter").value = state.keyword;
+  });
+
+  document.querySelector("#dashboardSearch").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      state.keyword = event.target.value.trim();
+      document.querySelector("#globalSearch").value = state.keyword;
+      document.querySelector("#keywordFilter").value = state.keyword;
+      setView("topics");
+      renderAll();
+    }
   });
 
   document.querySelector("#keywordFilter").addEventListener("input", (event) => {
@@ -397,6 +427,7 @@ function bindEvents() {
       favoriteOnly: false,
     });
     document.querySelector("#globalSearch").value = "";
+    document.querySelector("#dashboardSearch").value = "";
     document.querySelector("#keywordFilter").value = "";
     document.querySelector("#categoryFilter").value = "全部";
     document.querySelector("#platformFilter").value = "全部";
@@ -422,11 +453,20 @@ function bindEvents() {
       playThreshold: Number(document.querySelector("#playThreshold").value || defaultSettings.playThreshold),
       heatThreshold: Number(document.querySelector("#heatThreshold").value || defaultSettings.heatThreshold),
       useSampleData: settings.useSampleData,
+      sourceUrl: document.querySelector("#dataSourceUrl").value.trim(),
+      sourceKind: document.querySelector("#dataSourceKind").value,
+      autoSyncSource: document.querySelector("#autoSyncSource").checked,
     };
     writeJSON("radarSettings", settings);
     renderAll();
     toast("配置已保存，破圈标记和告警已按新阈值刷新。");
   });
+
+  document.querySelector("#dataSourceUrl").addEventListener("change", saveSourceSettings);
+  document.querySelector("#dataSourceKind").addEventListener("change", saveSourceSettings);
+  document.querySelector("#autoSyncSource").addEventListener("change", saveSourceSettings);
+  document.querySelector("#syncSourceNow").addEventListener("click", () => syncConfiguredSource("手动同步"));
+  document.querySelector("#dashboardSyncSource").addEventListener("click", () => syncConfiguredSource("首页同步"));
 
   document.querySelector("#refreshButton").addEventListener("click", () => {
     createDailySnapshot("手动刷新");
@@ -531,6 +571,7 @@ function renderAll() {
   renderImportReport();
   renderDataHealth();
   renderImportHistory();
+  renderSourceStatus();
   createIcons();
 }
 
@@ -784,6 +825,38 @@ function renderDataHealth() {
       <div class="health-item"><span>最近快照</span><strong>${latestSnapshot ? dateFormatter.format(new Date(latestSnapshot.createdAt)) : "暂无"}</strong></div>
       <div class="health-item"><span>收藏话题</span><strong>${favorites.size}</strong></div>
     </div>
+  `;
+}
+
+function renderSourceStatus() {
+  const html = buildSourceStatusHtml();
+  const dashboardNode = document.querySelector("#sourceStatus");
+  const adminNode = document.querySelector("#adminSourceStatus");
+  if (dashboardNode) dashboardNode.innerHTML = html;
+  if (adminNode) adminNode.innerHTML = html;
+  const urlInput = document.querySelector("#dataSourceUrl");
+  const kindInput = document.querySelector("#dataSourceKind");
+  const autoInput = document.querySelector("#autoSyncSource");
+  if (urlInput && urlInput.value !== settings.sourceUrl) urlInput.value = settings.sourceUrl;
+  if (kindInput && kindInput.value !== settings.sourceKind) kindInput.value = settings.sourceKind;
+  if (autoInput) autoInput.checked = settings.autoSyncSource;
+}
+
+function buildSourceStatusHtml() {
+  const status = dataSourceStatus || {
+    state: settings.sourceUrl ? "idle" : "empty",
+    message: settings.sourceUrl ? "等待同步" : "未配置数据源",
+    updatedAt: "",
+    sourceUrl: settings.sourceUrl,
+    usingCache: importedTopics.length > 0,
+  };
+  const className =
+    status.state === "success" ? "status-ok" : status.state === "failed" ? "status-error" : status.usingCache ? "status-warn" : "";
+  return `
+    <div class="status-item ${className}"><span>同步状态</span><strong>${status.message || "等待同步"}</strong></div>
+    <div class="status-item"><span>数据源</span><strong>${status.sourceUrl || settings.sourceUrl || "未配置"}</strong></div>
+    <div class="status-item"><span>最近同步</span><strong>${status.updatedAt ? dateFormatter.format(new Date(status.updatedAt)) : "暂无"}</strong></div>
+    <div class="status-item ${status.usingCache ? "status-warn" : ""}"><span>缓存回退</span><strong>${status.usingCache ? "可用" : "未使用"}</strong></div>
   `;
 }
 
@@ -1042,18 +1115,127 @@ function buildAlerts() {
     }));
 }
 
+function saveSourceSettings() {
+  settings.sourceUrl = document.querySelector("#dataSourceUrl").value.trim();
+  settings.sourceKind = document.querySelector("#dataSourceKind").value;
+  settings.autoSyncSource = document.querySelector("#autoSyncSource").checked;
+  writeJSON("radarSettings", settings);
+  renderSourceStatus();
+  toast("数据源配置已保存。");
+}
+
+async function syncConfiguredSource(reason, options = {}) {
+  saveSourceSettingsWithoutToast();
+  if (!settings.sourceUrl) {
+    dataSourceStatus = {
+      state: "idle",
+      message: "未配置公开数据源 URL",
+      sourceUrl: "",
+      updatedAt: new Date().toISOString(),
+      usingCache: importedTopics.length > 0,
+    };
+    writeJSON("radarDataSourceStatus", dataSourceStatus);
+    renderSourceStatus();
+    if (!options.silent) toast("请先填写公开 CSV 或网页表格 URL。");
+    return null;
+  }
+
+  dataSourceStatus = {
+    state: "syncing",
+    message: "正在同步数据源",
+    sourceUrl: settings.sourceUrl,
+    updatedAt: new Date().toISOString(),
+    usingCache: importedTopics.length > 0,
+  };
+  writeJSON("radarDataSourceStatus", dataSourceStatus);
+  renderSourceStatus();
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 12000);
+    const response = await fetch(settings.sourceUrl, { cache: "no-store", signal: controller.signal }).finally(() =>
+      window.clearTimeout(timeoutId),
+    );
+    if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+    const text = await response.text();
+    const contentType = response.headers.get("content-type") || "";
+    const rows = parseSourceText(text, settings.sourceKind, settings.sourceUrl, contentType);
+    if (rows.length === 0) throw new Error("数据源没有解析出有效行，请检查 CSV 表头或网页表格。");
+    const report = importZoneRows(rows, reason, { sourceUrl: settings.sourceUrl });
+    dataSourceStatus = {
+      state: "success",
+      message: `同步成功，导入 ${report.accepted} 条`,
+      sourceUrl: settings.sourceUrl,
+      updatedAt: new Date().toISOString(),
+      accepted: report.accepted,
+      skipped: report.skipped,
+      breakthrough: report.breakthrough,
+      usingCache: false,
+    };
+    writeJSON("radarDataSourceStatus", dataSourceStatus);
+    renderAll();
+    if (!options.silent) toast(`已同步数据源：${report.accepted} 条话题。`);
+    return report;
+  } catch (error) {
+    dataSourceStatus = {
+      state: "failed",
+      message: `同步失败：${error.name === "AbortError" ? "请求超时" : error.message || "未知错误"}`,
+      sourceUrl: settings.sourceUrl,
+      updatedAt: new Date().toISOString(),
+      usingCache: importedTopics.length > 0,
+    };
+    writeJSON("radarDataSourceStatus", dataSourceStatus);
+    renderSourceStatus();
+    if (!options.silent) toast(`同步失败，${importedTopics.length ? "已继续使用缓存。" : "暂无缓存可用。"}`);
+    return null;
+  }
+}
+
+function saveSourceSettingsWithoutToast() {
+  settings.sourceUrl = document.querySelector("#dataSourceUrl").value.trim();
+  settings.sourceKind = document.querySelector("#dataSourceKind").value;
+  settings.autoSyncSource = document.querySelector("#autoSyncSource").checked;
+  writeJSON("radarSettings", settings);
+}
+
+function parseSourceText(text, kind, url, contentType) {
+  const resolved = resolveSourceKind(text, kind, url, contentType);
+  if (resolved === "json") return parseZoneJSON(text);
+  if (resolved === "html") return parseZoneHTML(text);
+  return parseZoneCSV(text);
+}
+
+function resolveSourceKind(text, kind, url, contentType) {
+  if (kind && kind !== "auto") return kind;
+  const lowerUrl = (url || "").toLowerCase();
+  const lowerType = (contentType || "").toLowerCase();
+  const sample = String(text || "").trim().slice(0, 200).toLowerCase();
+  if (lowerType.includes("json") || lowerUrl.endsWith(".json") || sample.startsWith("{") || sample.startsWith("[")) return "json";
+  if (lowerType.includes("html") || lowerUrl.endsWith(".html") || sample.includes("<table") || sample.includes("<html")) return "html";
+  return "csv";
+}
+
 function buildTopicCollection() {
   return [...importedTopics, ...(settings.useSampleData ? baseTopics : [])];
 }
 
 function importZoneText(raw, sourceName) {
   const rows = parseZoneRows(raw);
+  return importZoneRows(rows, sourceName);
+}
+
+function importZoneRows(rows, sourceName, meta = {}) {
   const errors = [];
   const normalized = rows
     .map((row, index) => {
       const topic = normalizeZoneRow(row, index);
       if (!topic) errors.push(`第 ${index + 1} 行缺少标题，已跳过`);
-      return topic;
+      return topic
+        ? {
+            ...topic,
+            sourceUrl: meta.sourceUrl || topic.sourceUrl || "",
+          }
+        : topic;
     })
     .filter(Boolean);
   const mergeResult = mergeImportedTopicsDetailed(importedTopics, normalized);
@@ -1082,7 +1264,9 @@ function importZoneText(raw, sourceName) {
 function parseZoneRows(raw) {
   const text = String(raw || "").trim();
   if (!text) return [];
-  return text.startsWith("[") || text.startsWith("{") ? parseZoneJSON(text) : parseZoneCSV(text);
+  if (text.startsWith("[") || text.startsWith("{")) return parseZoneJSON(text);
+  if (/<table[\s>]|<html[\s>]|<tbody[\s>]/i.test(text)) return parseZoneHTML(text);
+  return parseZoneCSV(text);
 }
 
 function parseZoneImport(raw) {
@@ -1100,9 +1284,10 @@ function parseZoneJSON(text) {
 function parseZoneCSV(text) {
   const lines = text.split(/\r?\n/).filter((line) => line.trim());
   if (lines.length < 2) return [];
-  const headers = splitCSVLine(lines[0]).map((item) => item.trim());
+  const delimiter = detectDelimiter(lines[0]);
+  const headers = splitDelimitedLine(lines[0], delimiter).map((item) => item.replace(/^\uFEFF/, "").trim());
   return lines.slice(1).map((line) => {
-    const values = splitCSVLine(line);
+    const values = splitDelimitedLine(line, delimiter);
     return headers.reduce((row, header, index) => {
       row[header] = values[index] || "";
       return row;
@@ -1111,6 +1296,17 @@ function parseZoneCSV(text) {
 }
 
 function splitCSVLine(line) {
+  return splitDelimitedLine(line, ",");
+}
+
+function detectDelimiter(headerLine) {
+  if (headerLine.includes("\t")) return "\t";
+  if (headerLine.includes("|") && !headerLine.includes(",")) return "|";
+  return ",";
+}
+
+function splitDelimitedLine(line, delimiter) {
+  if (delimiter !== ",") return line.split(delimiter).map((cell) => cell.trim());
   const cells = [];
   let current = "";
   let quoted = false;
@@ -1131,6 +1327,39 @@ function splitCSVLine(line) {
   }
   cells.push(current.trim());
   return cells;
+}
+
+function parseZoneHTML(text) {
+  const doc = new DOMParser().parseFromString(text, "text/html");
+  const tables = Array.from(doc.querySelectorAll("table"));
+  if (tables.length === 0) return parseLooseTableText(doc.body?.innerText || text);
+  const table = tables
+    .map((candidate) => ({
+      candidate,
+      rows: Array.from(candidate.querySelectorAll("tr")),
+    }))
+    .sort((a, b) => b.rows.length - a.rows.length)[0];
+  if (!table || table.rows.length < 2) return [];
+  const matrix = table.rows
+    .map((row) => Array.from(row.querySelectorAll("th,td")).map((cell) => cell.textContent.trim()))
+    .filter((row) => row.some(Boolean));
+  if (matrix.length < 2) return [];
+  const headers = matrix[0];
+  return matrix.slice(1).map((values) =>
+    headers.reduce((row, header, index) => {
+      row[header] = values[index] || "";
+      return row;
+    }, {}),
+  );
+}
+
+function parseLooseTableText(text) {
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return [];
+  return parseZoneCSV(lines.join("\n"));
 }
 
 function normalizeZoneRow(row, index) {

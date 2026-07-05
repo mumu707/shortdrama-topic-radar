@@ -45,6 +45,23 @@
         </header>
 
         <section class="view active" id="dashboardView" aria-labelledby="viewTitle">
+          <section class="panel wide search-workbench">
+            <div class="panel-title">
+              <div>
+                <h2>话题搜索工作台</h2>
+                <p>打开网页自动同步公开 CSV/网页表格；同步失败时继续使用本地缓存。</p>
+              </div>
+              <button class="primary-button" id="dashboardSyncSource" type="button"><i data-lucide="cloud-download"></i>同步数据源</button>
+            </div>
+            <div class="source-status" id="sourceStatus"></div>
+            <div class="quick-search-row">
+              <label>
+                快速搜索
+                <input id="dashboardSearch" type="search" placeholder="输入动漫、游戏、影视话题或关键词" />
+              </label>
+              <button class="primary-button" data-jump="topics"><i data-lucide="search"></i>进入搜索</button>
+            </div>
+          </section>
           <div class="metric-grid">
             <article class="metric-card accent-red">
               <span>今日破圈话题</span>
@@ -235,6 +252,36 @@
                 </div>
               </div>
               <div class="import-report" id="importReport"></div>
+            </section>
+
+            <section class="panel wide">
+              <div class="panel-title">
+                <div>
+                  <h2>公开数据源同步</h2>
+                  <p>支持公开 CSV 链接、允许跨域访问的网页表格；登录态专区页面请复制表格内容后粘贴导入。</p>
+                </div>
+                <button class="primary-button" id="syncSourceNow" type="button"><i data-lucide="cloud-download"></i>立即同步</button>
+              </div>
+              <div class="source-config-grid">
+                <label>
+                  数据源 URL
+                  <input id="dataSourceUrl" type="url" placeholder="https://example.com/topics.csv" />
+                </label>
+                <label>
+                  数据格式
+                  <select id="dataSourceKind">
+                    <option value="auto">自动识别</option>
+                    <option value="csv">CSV/TSV</option>
+                    <option value="json">JSON</option>
+                    <option value="html">HTML 表格</option>
+                  </select>
+                </label>
+                <label class="checkbox">
+                  <input id="autoSyncSource" type="checkbox" />
+                  打开网页自动同步
+                </label>
+              </div>
+              <div class="source-status" id="adminSourceStatus"></div>
             </section>
 
             <section class="panel">

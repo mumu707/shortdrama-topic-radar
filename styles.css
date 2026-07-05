@@ -316,6 +316,69 @@ h3 {
   gap: 14px;
 }
 
+.search-workbench {
+  margin-bottom: 14px;
+}
+
+.quick-search-row,
+.source-config-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.source-config-grid {
+  grid-template-columns: minmax(260px, 1fr) minmax(160px, 220px) minmax(180px, auto);
+}
+
+.source-status {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.source-status:empty {
+  display: none;
+}
+
+.status-item {
+  min-height: 68px;
+  padding: 10px;
+  border: 1px solid #e8e1d6;
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.status-item span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.status-item strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.status-ok {
+  border-color: rgba(38, 115, 93, 0.35);
+  background: #eef8f4;
+}
+
+.status-warn {
+  border-color: rgba(183, 121, 31, 0.35);
+  background: #fff8ea;
+}
+
+.status-error {
+  border-color: rgba(200, 75, 64, 0.35);
+  background: #fff0ee;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: 290px minmax(360px, 1fr) minmax(330px, 0.82fr);
@@ -1000,6 +1063,9 @@ textarea {
   .topic-strip,
   .idea-row,
   .idea-grid,
+  .quick-search-row,
+  .source-config-grid,
+  .source-status,
   .idea-toolbar,
   .settings-form,
   .import-grid,
