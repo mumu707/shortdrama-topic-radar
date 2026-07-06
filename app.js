@@ -17,6 +17,8 @@ const defaultSettings = {
 
 const MAX_RENDERED_TOPICS = 300;
 const DAILY_HOT_DOUYIN_URL = "https://api-hot.imsyy.top/douyin";
+const XXAPI_DOUYIN_HOT_URL = "https://v2.xxapi.cn/api/douyinhot";
+const TIANAPI_DOUYIN_HOT_URL = "https://apis.tianapi.com/douyinhot/index?key=YOUR_TIANAPI_KEY";
 
 const defaultCategories = [
   "全部",
@@ -800,7 +802,9 @@ function renderAlerts() {
 function renderAdmin() {
   const sources = [
     ["截", "抖音截图/专区导出", "播放量口径", `${importedTopics.length} 条已导入`],
-    ["热", "DailyHotApi 抖音热榜", "hot_value / 非播放量", settings.sourceUrl === DAILY_HOT_DOUYIN_URL ? "当前同步源" : "可一键同步"],
+    ["小", "小小 API 抖音热榜", "hot_value / 非播放量", settings.sourceUrl === XXAPI_DOUYIN_HOT_URL ? "当前同步源" : "可一键同步"],
+    ["热", "DailyHotApi 抖音热榜", "hot_value / 非播放量", settings.sourceUrl === DAILY_HOT_DOUYIN_URL ? "当前同步源" : "备用"],
+    ["天", "天聚抖音热搜榜", "hotindex / 需 key", settings.sourceUrl.includes("apis.tianapi.com") ? "当前同步源" : "可手动配置"],
     ["授", "授权补充数据", "已授权", "播放/互动补充"],
     ["题", "内部选题题库", "非真实热度", "仅用于垂类扩展"],
     ["快", "本地快照库", "浏览器存储", `${topicSnapshots.length} 次快照`],
@@ -1159,14 +1163,14 @@ function saveSourceSettings() {
 }
 
 function syncDailyHotDouyin() {
-  settings.sourceUrl = DAILY_HOT_DOUYIN_URL;
+  settings.sourceUrl = XXAPI_DOUYIN_HOT_URL;
   settings.sourceKind = "json";
   settings.autoSyncSource = true;
   writeJSON("radarSettings", settings);
   document.querySelector("#dataSourceUrl").value = settings.sourceUrl;
   document.querySelector("#dataSourceKind").value = settings.sourceKind;
   document.querySelector("#autoSyncSource").checked = true;
-  syncConfiguredSource("DailyHotApi 抖音热榜");
+  syncConfiguredSource("小小 API 抖音热榜");
 }
 
 async function syncConfiguredSource(reason, options = {}) {
@@ -1336,48 +1340,117 @@ function parseZoneImport(raw) {
 
 function parseZoneJSON(text, url = "") {
   const value = JSON.parse(text);
-  if (isDailyHotDouyinPayload(value, url)) return normalizeDailyHotDouyinRows(value);
+  if (isDouyinHotPayload(value, url)) return normalizeDouyinHotRows(value, url);
   if (Array.isArray(value)) return value;
   if (Array.isArray(value.topics)) return value.topics;
   if (Array.isArray(value.data)) return value.data;
   return [value];
 }
 
-function isDailyHotDouyinPayload(value, url = "") {
+function isDouyinHotPayload(value, url = "") {
+  const sourceUrl = String(url);
+  const items = extractDouyinHotItems(value);
   return (
-    value &&
-    !Array.isArray(value) &&
-    Array.isArray(value.data) &&
-    (value.name === "douyin" || String(url).includes("api-hot.imsyy.top/douyin"))
+    items.length > 0 &&
+    (sourceUrl.includes("api-hot.imsyy.top/douyin") ||
+      sourceUrl.includes("v2.xxapi.cn/api/douyinhot") ||
+      sourceUrl.includes("apis.tianapi.com/douyinhot") ||
+      value?.name === "douyin" ||
+      items.some((item) => item.word || item.hot_value || item.hotindex || item.sentence_id))
   );
 }
 
-function normalizeDailyHotDouyinRows(payload) {
+function extractDouyinHotItems(value) {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.result)) return value.result;
+  if (Array.isArray(value?.result?.list)) return value.result.list;
+  if (Array.isArray(value?.result?.data)) return value.result.data;
+  if (Array.isArray(value?.result?.newslist)) return value.result.newslist;
+  if (Array.isArray(value?.newslist)) return value.newslist;
+  return [];
+}
+
+function normalizeDouyinHotRows(payload, url = "") {
   const collectedAt = new Date().toISOString();
-  return payload.data.map((item, index) => {
-    const hotValue = Number(item.hot ?? item.hot_value ?? item.heat ?? 0) || 0;
-    const title = item.title || item.word || item.name || `抖音热榜 ${index + 1}`;
+  const provider = resolveDouyinHotProvider(payload, url);
+  return extractDouyinHotItems(payload).map((item, index) => {
+    const hotValue = normalizeNumber(item.hot ?? item.hot_value ?? item.hotindex ?? item.heat ?? item.score ?? 0) || 0;
+    const title = item.title || item.word || item.name || item.keyword || `抖音热榜 ${index + 1}`;
+    const rank = normalizeNumber(item.position ?? item.rank ?? item.index) || index + 1;
+    const hotUrl =
+      item.url ||
+      item.mobileUrl ||
+      item.share_url ||
+      item.link ||
+      (item.sentence_id ? `https://www.douyin.com/hot/${item.sentence_id}` : "");
+    const eventTime = normalizeNumber(item.event_time ?? item.eventTime ?? item.timestamp ?? 0);
+    const rowCollectedAt = eventTime
+      ? new Date(eventTime < 10000000000 ? eventTime * 1000 : eventTime).toISOString()
+      : collectedAt;
     return {
       title,
       platform: "抖音",
       category: "抖音热榜",
-      tags: ["抖音热榜", "DailyHotApi", "hot_value", payload.type || "热榜"].join("|"),
+      tags: ["抖音热榜", provider.tag, provider.metric, item.label ? `label:${item.label}` : "", payload.type || "热榜"].filter(Boolean).join("|"),
       heat: hotValue,
       playCount: "",
       influenceIndex: hotValue,
-      rank: index + 1,
+      rank,
       rankChange: 0,
-      source: "DailyHotApi / 抖音热点榜",
-      sourceAuth: "DailyHotApi 抖音热榜 hot_value / 非播放量口径",
-      collectedAt,
+      source: provider.source,
+      sourceAuth: provider.sourceAuth,
+      collectedAt: rowCollectedAt,
       firstSeenDays: 1,
-      sentiment: "DailyHotApi 抖音热榜条目，仅表示热榜热度，不代表话题播放量。",
+      sentiment: `${provider.name}条目，仅表示热榜热度，不代表话题播放量。`,
       opportunity: "可作为当天热点发现入口；若要判断破圈话题度，需要再用抖音话题页截图、专区导出或授权接口补充播放量。",
-      related: [item.url, item.mobileUrl].filter(Boolean).join("|"),
-      videos: [item.url || item.mobileUrl || ""].filter(Boolean).join("|"),
-      risks: "非播放量口径|第三方聚合接口|需复核来源稳定性",
+      related: [hotUrl, item.word_cover?.url_list?.[0]].filter(Boolean).join("|"),
+      videos: [hotUrl].filter(Boolean).join("|"),
+      risks: `非播放量口径|${provider.risk}|需复核来源稳定性`,
     };
   });
+}
+
+function resolveDouyinHotProvider(payload, url = "") {
+  const sourceUrl = String(url);
+  if (sourceUrl.includes("v2.xxapi.cn/api/douyinhot")) {
+    return {
+      name: "小小 API 抖音热榜",
+      tag: "XXAPI",
+      metric: "hot_value",
+      source: "小小 API / 抖音热榜",
+      sourceAuth: "小小 API 抖音热榜 hot_value / 非播放量口径",
+      risk: "第三方聚合接口",
+    };
+  }
+  if (sourceUrl.includes("apis.tianapi.com/douyinhot")) {
+    return {
+      name: "天聚数据抖音热搜榜",
+      tag: "TianAPI",
+      metric: "hotindex",
+      source: "天聚数据 / 抖音热搜榜",
+      sourceAuth: "天聚数据抖音热搜榜 hotindex / 非播放量口径",
+      risk: "第三方付费接口",
+    };
+  }
+  if (payload?.name === "douyin" || sourceUrl.includes("api-hot.imsyy.top/douyin")) {
+    return {
+      name: "DailyHotApi 抖音热榜",
+      tag: "DailyHotApi",
+      metric: "hot_value",
+      source: "DailyHotApi / 抖音热点榜",
+      sourceAuth: "DailyHotApi 抖音热榜 hot_value / 非播放量口径",
+      risk: "第三方聚合接口",
+    };
+  }
+  return {
+    name: "抖音热榜 API",
+    tag: "DouyinHotAPI",
+    metric: "hot_value",
+    source: "抖音热榜 API",
+    sourceAuth: "抖音热榜 API 热度字段 / 非播放量口径",
+    risk: "第三方接口",
+  };
 }
 
 function parseZoneCSV(text) {
@@ -1499,8 +1572,8 @@ function normalizeZoneRow(row, index) {
     opportunity:
       readField(row, ["opportunity", "改编机会", "短剧机会"]) ||
       (isInternalBank ? "可作为垂类检索和选题发散，真实热度需用专区数据复核。" : `可围绕「${title}」提炼身份落差、强冲突和前三集反转，生成短剧选题卡后再细化人物关系。`),
-    related: normalizeTags(readField(row, ["related", "相关话题", "话题簇"])).slice(0, 4),
-    videos: normalizeTags(readField(row, ["videos", "代表内容", "代表视频"])).slice(0, 4),
+    related: normalizeTopicList(readField(row, ["related", "相关话题", "话题簇"])).slice(0, 4),
+    videos: normalizeTopicList(readField(row, ["videos", "代表内容", "代表视频"])).slice(0, 4),
     risks: normalizeTags(readField(row, ["risks", "风险", "风险提示"])).slice(0, 4),
   };
 }
@@ -1518,6 +1591,18 @@ function normalizeTags(value) {
     .split(/[、,，|/]/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function normalizeTopicList(value) {
+  if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean);
+  const text = String(value || "");
+  if (/https?:\/\//i.test(text)) {
+    return text
+      .split(/[、,，|]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return normalizeTags(value);
 }
 
 function normalizeNumber(value) {

@@ -39,6 +39,32 @@
       },
       "compliance": "Third-party aggregated hot list. Use as trend discovery only; playback-count validation still requires Douyin topic page screenshot, authorized export, or official/authorized API.",
       "verification": "Adapter accepts DailyHotApi fields title/word/name and hot/hot_value/heat; rows are marked as non-playback metric."
+    },
+    {
+      "file": "https://v2.xxapi.cn/api/douyinhot",
+      "status": "active-live-hotlist-source",
+      "source": "小小 API 抖音热搜榜",
+      "collectionMethod": "Fetch JSON directly from browser; CORS header is Access-Control-Allow-Origin: *.",
+      "metricFields": {
+        "playCount": "empty; this API does not provide topic playback count",
+        "heat": "hot_value mapped to local heat",
+        "influenceIndex": "hot_value mapped to local influenceIndex"
+      },
+      "compliance": "Third-party aggregated hot list. Use as trend discovery only; playback-count validation still requires Douyin topic page screenshot, authorized export, or official/authorized API.",
+      "verification": "2026-07-06 tested HTTP 200, JSON code 200, 50 rows returned, first row includes word/hot_value/position."
+    },
+    {
+      "file": "https://apis.tianapi.com/douyinhot/index?key=YOUR_TIANAPI_KEY",
+      "status": "optional-keyed-hotlist-source",
+      "source": "天聚数据抖音热搜榜 API",
+      "collectionMethod": "Fetch JSON with API key, or call through a private server proxy to hide the key.",
+      "metricFields": {
+        "playCount": "empty; this API does not provide topic playback count",
+        "heat": "hotindex mapped to local heat",
+        "influenceIndex": "hotindex mapped to local influenceIndex"
+      },
+      "compliance": "Requires a TianAPI key and quota. Do not expose paid keys in public repos if usage or cost control matters.",
+      "verification": "2026-07-06 endpoint reachable and CORS enabled; no-key request returns code 240: missing API key."
     }
   ]
 }
