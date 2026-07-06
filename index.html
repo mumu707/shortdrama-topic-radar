@@ -26,7 +26,7 @@
         </nav>
         <div class="compliance-note">
           <i data-lucide="shield-check"></i>
-          <p>当前使用专区导出或授权数据源，不依赖官方接口环境，不使用绕权抓取。</p>
+          <p>当前只使用云端 API 数据源，不混入本地题库或手动样本。</p>
         </div>
       </aside>
 
@@ -50,7 +50,7 @@
             <div class="panel-title">
               <div>
                 <h2>话题搜索工作台</h2>
-                <p>打开网页自动同步公开 CSV/网页表格；同步失败时继续使用本地缓存。</p>
+                <p>打开网页自动同步云端 API；同步失败时只保留上一次云端 API 缓存。</p>
               </div>
               <div class="button-row">
                 <button class="primary-button" id="dashboardSyncSource" type="button"><i data-lucide="cloud-download"></i>同步数据源</button>
@@ -83,14 +83,14 @@
               <small>编剧策划待确认</small>
             </article>
             <article class="metric-card accent-gold">
-              <span>专区数据源</span>
-              <strong>3</strong>
-              <small>专区导出、授权补充、人工补录</small>
+              <span>云端 API 源</span>
+              <strong>2</strong>
+              <small>小小 API、天聚 API，可扩展腾讯云代理</small>
             </article>
           </div>
 
           <div class="dashboard-grid">
-            <section class="panel wide">
+            <section class="panel wide" hidden>
               <div class="panel-title">
                 <div>
                   <h2>破圈话题</h2>
@@ -229,8 +229,8 @@
             <section class="panel wide">
               <div class="panel-title">
                 <div>
-                  <h2>专区数据导入</h2>
-                  <p>粘贴专区导出的 JSON 或 CSV，导入后进入搜索、告警和选题卡流程。</p>
+                  <h2>手动导入已停用</h2>
+                  <p>当前为云端 API-only 模式，不再接受本地 CSV、截图样本或手动题库。</p>
                 </div>
                 <button class="text-button" id="clearImportedTopics"><i data-lucide="trash-2"></i>清空导入</button>
               </div>
@@ -242,13 +242,13 @@
                 <div class="import-help">
                   <h3>导入规则</h3>
                   <p>必填字段只有标题，其他字段缺失时会使用默认值。标签可用中文逗号、英文逗号或竖线分隔。</p>
-                  <p>导入数据会标记为“专区导入”，并保留采集时间。播放量超过 5 亿时按播放量破圈；没有播放量时按影响力指数阈值判断。</p>
+                  <p>所有热榜数据必须通过云端 API 同步进入系统；播放量话题度需要后续接入授权 API。</p>
                   <label class="file-import">
                     <i data-lucide="file-up"></i>
-                    <span>选择专区 CSV/JSON 文件</span>
+                    <span>本地文件导入已停用</span>
                     <input id="zoneImportFile" type="file" accept=".csv,.json,.txt,text/csv,application/json" />
                   </label>
-                  <button class="primary-button" id="importZoneData"><i data-lucide="upload"></i>导入专区数据</button>
+                  <button class="primary-button" id="importZoneData"><i data-lucide="upload"></i>导入已停用</button>
                   <div class="button-stack">
                     <button class="small-action" id="downloadTemplate" type="button"><i data-lucide="table"></i>下载导入模板</button>
                     <button class="small-action" id="exportTopicsJson" type="button"><i data-lucide="braces"></i>导出话题 JSON</button>
@@ -262,8 +262,8 @@
             <section class="panel wide">
               <div class="panel-title">
                 <div>
-                  <h2>公开数据源同步</h2>
-                  <p>支持公开 CSV 链接、允许跨域访问的网页表格；登录态专区页面请复制表格内容后粘贴导入。</p>
+                  <h2>云端 API 同步</h2>
+                  <p>仅支持 http(s) 云端 API 地址；不再读取本地 CSV、截图样本或手动导入题库。</p>
                 </div>
                 <div class="button-row">
                   <button class="primary-button" id="syncSourceNow" type="button"><i data-lucide="cloud-download"></i>立即同步</button>
@@ -274,7 +274,7 @@
               <div class="source-config-grid">
                 <label>
                   数据源 URL
-                  <input id="dataSourceUrl" type="url" placeholder="https://example.com/topics.csv" />
+                  <input id="dataSourceUrl" type="url" placeholder="https://v2.xxapi.cn/api/douyinhot" />
                 </label>
                 <label>
                   数据格式
@@ -310,12 +310,12 @@
               <div class="panel-title">
                 <div>
                   <h2>数据运行状态</h2>
-                  <p>本地持久化、快照和演示样本控制。</p>
+                  <p>云端 API 缓存、快照与同步状态。</p>
                 </div>
               </div>
               <div class="data-health" id="dataHealth"></div>
               <div class="card-actions">
-                <button class="small-action" id="toggleSampleData" type="button"><i data-lucide="database"></i>切换演示样本</button>
+                <button class="small-action" id="toggleSampleData" type="button" hidden><i data-lucide="database"></i>切换演示样本</button>
                 <button class="small-action" id="createSnapshot" type="button"><i data-lucide="camera"></i>生成快照</button>
               </div>
             </section>
@@ -323,7 +323,7 @@
               <div class="panel-title">
                 <div>
                   <h2>导入历史</h2>
-                  <p>记录每次专区导入、更新、跳过和破圈数量。</p>
+                  <p>记录每次云端 API 同步、更新、跳过和破圈数量。</p>
                 </div>
               </div>
               <div class="history-list" id="importHistory"></div>
@@ -332,13 +332,13 @@
               <div class="panel-title">
                 <div>
                   <h2>每日任务预览</h2>
-                  <p>从专区导出最新数据后导入，系统在本地完成清洗、快照和告警。</p>
+                  <p>从云端 API 获取最新热榜，系统在浏览器内完成清洗、快照和告警。</p>
                 </div>
               </div>
               <ol class="job-steps">
-                <li><span>1</span>从专区导出话题榜单或热度明细，保留来源页面、导出人和导出时间。</li>
-                <li><span>2</span>导入 JSON/CSV，系统标准化播放量、影响力指数、排名、变化和标签。</li>
-                <li><span>3</span>写入每日快照，计算增速、趋势状态和破圈标记。</li>
+                <li><span>1</span>自动请求小小 API、天聚 API 或腾讯云代理接口，保留来源 URL 和同步时间。</li>
+                <li><span>2</span>标准化热榜标题、热度指数、排名、标签和内容链接。</li>
+                <li><span>3</span>写入云端 API 快照，计算增速、趋势状态和破圈标记。</li>
                 <li><span>4</span>生成站内告警，并将高优话题推入选题候选池。</li>
               </ol>
             </section>

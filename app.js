@@ -9,8 +9,8 @@ const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
 const defaultSettings = {
   playThreshold: 500000000,
   heatThreshold: 86000,
-  sourceUrl: "./data/douyin-topics.csv",
-  sourceKind: "csv",
+  sourceUrl: "https://v2.xxapi.cn/api/douyinhot",
+  sourceKind: "json",
   autoSyncSource: true,
   useSampleData: false,
   tianApiKey: "",
@@ -79,292 +79,52 @@ const defaultCategories = [
   "黑社会卧底",
 ];
 
-const baseTopics = [
-  {
-    id: "t1",
-    title: "国漫女主黑化复仇",
-    platform: "抖音",
-    category: "动漫",
-    tags: ["国漫", "女强", "复仇", "爽感"],
-    heat: 93400,
-    playCount: 680000000,
-    influenceIndex: 93210,
-    rank: 4,
-    rankChange: 18,
-    source: "专区导出 + 授权补充",
-    sourceAuth: "专区授权",
-    collectedAt: "2026-07-05T10:42:00+08:00",
-    firstSeenDays: 2,
-    trend: [38, 44, 51, 59, 67, 82, 94],
-    sentiment: "高燃、反击、替身文学讨论集中，评论区对女性角色掌控命运的期待强。",
-    opportunity: "适合改成现代都市或玄幻短剧，前三集必须完成羞辱、觉醒、第一次反杀。",
-    related: ["背叛后觉醒", "废柴逆袭", "女主不原谅"],
-    videos: ["高赞混剪", "角色台词盘点", "剧情解说"],
-    risks: ["版权/IP", "暴力尺度"],
-  },
-  {
-    id: "t2",
-    title: "开放世界手游 NPC 有了自我意识",
-    platform: "抖音",
-    category: "游戏",
-    tags: ["开放世界", "AI", "游戏改编", "反套路"],
-    heat: 88200,
-    playCount: 420000000,
-    influenceIndex: 90120,
-    rank: 7,
-    rankChange: 24,
-    source: "专区导出",
-    sourceAuth: "专区授权",
-    collectedAt: "2026-07-05T10:42:00+08:00",
-    firstSeenDays: 1,
-    trend: [22, 28, 39, 48, 61, 75, 88],
-    sentiment: "玩家对 NPC 觉醒、游戏世界反噬现实的讨论热烈，适合悬疑喜剧混合。",
-    opportunity: "可做男主进入游戏后被 NPC 识破身份，反被低级角色带飞的轻科幻短剧。",
-    related: ["游戏 NPC 觉醒", "穿进副本", "AI 队友"],
-    videos: ["实机整活", "剧情脑洞", "玩家二创"],
-    risks: ["平台审核", "技术概念解释成本"],
-  },
-  {
-    id: "t3",
-    title: "老电影反派其实救了所有人",
-    platform: "抖音",
-    category: "影视",
-    tags: ["影视解说", "反转", "童年回忆", "悬疑"],
-    heat: 76500,
-    playCount: 530000000,
-    influenceIndex: 77100,
-    rank: 11,
-    rankChange: 9,
-    source: "专区导出 + 授权补充",
-    sourceAuth: "专区授权",
-    collectedAt: "2026-07-05T10:37:00+08:00",
-    firstSeenDays: 5,
-    trend: [64, 68, 71, 72, 75, 76, 77],
-    sentiment: "观众喜欢重读经典角色，对隐藏真相与错怪反派的情绪反馈稳定。",
-    opportunity: "适合做悬疑亲情短剧：所有人以为父亲是恶人，最后发现他一直在挡灾。",
-    related: ["反派洗白", "童年阴影", "真相反转"],
-    videos: ["经典片段", "细节解析", "结局重读"],
-    risks: ["版权/IP", "热度衰减"],
-  },
-  {
-    id: "t4",
-    title: "二次元生日应援破圈",
-    platform: "抖音",
-    category: "二次元",
-    tags: ["应援", "虚拟偶像", "粉丝经济", "陪伴"],
-    heat: 84600,
-    playCount: null,
-    influenceIndex: 87500,
-    rank: 6,
-    rankChange: 15,
-    source: "专区导出",
-    sourceAuth: "专区授权",
-    collectedAt: "2026-07-05T10:40:00+08:00",
-    firstSeenDays: 1,
-    trend: [30, 36, 45, 57, 64, 76, 87],
-    sentiment: "粉丝强情感投入，评论集中在陪伴感、共同仪式、现实孤独感。",
-    opportunity: "可做虚拟偶像与现实编剧互相拯救，偏甜虐成长线。",
-    related: ["虚拟陪伴", "生日应援", "粉丝共创"],
-    videos: ["应援现场", "手书混剪", "祝福投稿"],
-    risks: ["粉圈争议", "未成年人"],
-  },
-  {
-    id: "t5",
-    title: "明星旧剧角色二创翻红",
-    platform: "抖音",
-    category: "明星/IP",
-    tags: ["旧剧翻红", "角色滤镜", "二创", "CP"],
-    heat: 82100,
-    playCount: 610000000,
-    influenceIndex: 81900,
-    rank: 8,
-    rankChange: 11,
-    source: "专区导出 + 人工补录",
-    sourceAuth: "专区授权",
-    collectedAt: "2026-07-05T10:33:00+08:00",
-    firstSeenDays: 4,
-    trend: [52, 58, 65, 70, 76, 80, 82],
-    sentiment: "角色滤镜带动考古，观众更关心未完成的遗憾和 CP 二创补偿。",
-    opportunity: "适合做娱乐圈短剧：过气演员因旧角色翻红，与新人搭档完成事业翻盘。",
-    related: ["旧剧考古", "CP 补偿", "演员翻红"],
-    videos: ["角色名场面", "CP 混剪", "采访考古"],
-    risks: ["肖像授权", "粉丝争议"],
-  },
-  {
-    id: "t6",
-    title: "打工人被系统奖励按时下班",
-    platform: "抖音",
-    category: "社会情绪",
-    tags: ["打工人", "系统流", "解压", "职场"],
-    heat: 79800,
-    playCount: 360000000,
-    influenceIndex: 79850,
-    rank: 13,
-    rankChange: 21,
-    source: "人工补录 + 专区导出",
-    sourceAuth: "内部授权",
-    collectedAt: "2026-07-05T10:45:00+08:00",
-    firstSeenDays: 1,
-    trend: [24, 31, 42, 54, 63, 71, 80],
-    sentiment: "强烈解压情绪，用户喜欢低成本反抗和生活秩序重新夺回。",
-    opportunity: "可做职场喜剧短剧：女主越拒绝无效加班越被系统奖励，爽点密集。",
-    related: ["拒绝内耗", "系统奖励", "职场反击"],
-    videos: ["职场段子", "剧情反转", "评论共鸣"],
-    risks: ["现实议题尺度"],
-  },
-  {
-    id: "t7",
-    title: "重生后先离婚再暴富",
-    platform: "抖音",
-    category: "恋爱婚姻",
-    tags: ["重生", "离婚", "暴富", "女性成长"],
-    heat: 86800,
-    playCount: 710000000,
-    influenceIndex: 86100,
-    rank: 5,
-    rankChange: 7,
-    source: "专区导出 + 授权补充",
-    sourceAuth: "专区授权",
-    collectedAt: "2026-07-05T10:36:00+08:00",
-    firstSeenDays: 6,
-    trend: [78, 80, 82, 84, 86, 87, 87],
-    sentiment: "成熟稳定题材，女性用户对及时止损、财富自主反馈最好。",
-    opportunity: "适合做强商业化女频短剧，关键在离婚后第一桶金的可信爽点。",
-    related: ["前夫后悔", "独立女性", "重生爽文"],
-    videos: ["短剧剪辑", "台词共鸣", "爽文解说"],
-    risks: ["题材同质化"],
-  },
-  {
-    id: "t8",
-    title: "假千金回村继承非遗工坊",
-    platform: "抖音",
-    category: "家庭伦理",
-    tags: ["假千金", "非遗", "亲情", "反差"],
-    heat: 74200,
-    playCount: 280000000,
-    influenceIndex: 74400,
-    rank: 19,
-    rankChange: 13,
-    source: "人工补录",
-    sourceAuth: "内部授权",
-    collectedAt: "2026-07-05T10:31:00+08:00",
-    firstSeenDays: 3,
-    trend: [41, 48, 54, 58, 63, 69, 74],
-    sentiment: "观众对身份落差、家族手艺与乡村治愈有正向反馈。",
-    opportunity: "可做温情逆袭：假千金被赶回村，靠非遗直播救下家族工坊。",
-    related: ["真假千金", "非遗直播", "乡村治愈"],
-    videos: ["手作过程", "身份反转", "亲情片段"],
-    risks: ["地方文化准确性"],
-  },
-  {
-    id: "t9",
-    title: "废柴男主其实是副本管理员",
-    platform: "抖音",
-    category: "逆袭复仇",
-    tags: ["副本", "男频", "隐藏身份", "反杀"],
-    heat: 90500,
-    playCount: 590000000,
-    influenceIndex: 90750,
-    rank: 3,
-    rankChange: 17,
-    source: "专区导出 + 授权补充",
-    sourceAuth: "专区授权",
-    collectedAt: "2026-07-05T10:39:00+08:00",
-    firstSeenDays: 2,
-    trend: [49, 55, 63, 71, 80, 88, 91],
-    sentiment: "男频用户对隐藏身份、规则碾压、全场反杀讨论集中。",
-    opportunity: "适合竖屏快节奏男频：前两分钟完成被羞辱与权限觉醒。",
-    related: ["隐藏身份", "无限流", "规则怪谈"],
-    videos: ["副本解说", "反杀剪辑", "爽点合集"],
-    risks: ["暴力尺度", "世界观解释成本"],
-  },
-  {
-    id: "t10",
-    title: "暑期档悬疑剧全员说谎",
-    platform: "抖音",
-    category: "影视",
-    tags: ["暑期档", "悬疑", "全员恶人", "反转"],
-    heat: 91600,
-    playCount: null,
-    influenceIndex: 91300,
-    rank: 2,
-    rankChange: 26,
-    source: "专区导出",
-    sourceAuth: "专区授权",
-    collectedAt: "2026-07-05T10:44:00+08:00",
-    firstSeenDays: 1,
-    trend: [34, 42, 53, 67, 78, 86, 91],
-    sentiment: "用户热衷猜凶和细节盘点，评论区二创推理密度高。",
-    opportunity: "可做家庭悬疑短剧：每集一个谎言反转，最后发现受害者才是操盘者。",
-    related: ["全员恶人", "细节盘点", "反转结局"],
-    videos: ["片段解析", "人物关系图", "结局预测"],
-    risks: ["版权/IP", "剧透争议"],
-  },
-  {
-    id: "t11",
-    title: "像素风独立游戏治愈破防",
-    platform: "抖音",
-    category: "游戏",
-    tags: ["独立游戏", "治愈", "像素风", "亲情"],
-    heat: 70100,
-    playCount: 190000000,
-    influenceIndex: 70320,
-    rank: 28,
-    rankChange: 8,
-    source: "专区导出 + 授权补充",
-    sourceAuth: "专区授权",
-    collectedAt: "2026-07-05T10:35:00+08:00",
-    firstSeenDays: 8,
-    trend: [55, 58, 61, 64, 67, 69, 70],
-    sentiment: "小体量但长尾好，用户在亲情、遗憾和自我和解上共鸣。",
-    opportunity: "可改成低成本治愈短剧，主角在游戏里补完与家人的最后一次告别。",
-    related: ["像素治愈", "亲情遗憾", "独立游戏"],
-    videos: ["实况剪辑", "结局破防", "配乐二创"],
-    risks: ["商业爆发不足"],
-  },
-  {
-    id: "t12",
-    title: "反派妈妈重回女儿十七岁",
-    platform: "抖音",
-    category: "家庭伦理",
-    tags: ["母女", "重生", "和解", "女性情感"],
-    heat: 87300,
-    playCount: 510000000,
-    influenceIndex: 86900,
-    rank: 9,
-    rankChange: 16,
-    source: "专区导出 + 授权补充",
-    sourceAuth: "专区授权",
-    collectedAt: "2026-07-05T10:38:00+08:00",
-    firstSeenDays: 2,
-    trend: [46, 52, 61, 69, 77, 83, 87],
-    sentiment: "母女关系冲突强，观众既想看弥补遗憾，也想看女儿拒绝道德绑架。",
-    opportunity: "可做女性亲情短剧：母亲重生后改写女儿命运，但必须先学会尊重边界。",
-    related: ["母女和解", "重生弥补", "亲情边界"],
-    videos: ["情绪片段", "评论投稿", "亲情混剪"],
-    risks: ["家庭议题尺度"],
-  },
-];
+const baseTopics = [];
 
 const storedSettings = readJSON("radarSettings", {});
 const hasStoredSourceUrl = typeof storedSettings.sourceUrl === "string" && storedSettings.sourceUrl.trim().length > 0;
-const hasCustomSourceUrl = hasStoredSourceUrl && storedSettings.sourceUrl.trim() !== "./data/topics.csv";
+const storedSourceUrl = hasStoredSourceUrl ? migrateCloudSourceUrl(storedSettings.sourceUrl.trim()) : "";
 let settings = { ...defaultSettings, ...storedSettings };
-settings.useSampleData = hasCustomSourceUrl ? settings.useSampleData === true : defaultSettings.useSampleData;
-settings.sourceUrl = hasCustomSourceUrl ? storedSettings.sourceUrl.trim() : defaultSettings.sourceUrl;
-if (settings.sourceUrl === DAILY_HOT_DOUYIN_URL) settings.sourceUrl = XXAPI_DOUYIN_HOT_URL;
-settings.sourceKind = hasCustomSourceUrl ? settings.sourceKind || defaultSettings.sourceKind : defaultSettings.sourceKind;
-settings.autoSyncSource = hasCustomSourceUrl ? settings.autoSyncSource !== false : defaultSettings.autoSyncSource;
-let importedTopics = readJSON("radarImportedTopics", []);
+settings.useSampleData = false;
+settings.sourceUrl = storedSourceUrl || defaultSettings.sourceUrl;
+settings.sourceKind = isKnownDouyinHotApi(settings.sourceUrl) ? "json" : settings.sourceKind || defaultSettings.sourceKind;
+settings.autoSyncSource = true;
+const storedImportedTopics = readJSON("radarImportedTopics", []);
+let importedTopics = storedImportedTopics.filter(isCloudApiTopic);
 let importHistory = readJSON("radarImportHistory", []);
 let topicSnapshots = readJSON("radarTopicSnapshots", []);
 let latestImportReport = readJSON("radarLatestImportReport", null);
 let dataSourceStatus = readJSON("radarDataSourceStatus", null);
+const removedLocalTopicCount = storedImportedTopics.length - importedTopics.length;
+if (removedLocalTopicCount > 0 || storedSettings.useSampleData || !isCloudApiSource(storedSettings.sourceUrl || "")) {
+  importHistory = [];
+  topicSnapshots = [];
+  latestImportReport = null;
+  dataSourceStatus = {
+    state: "idle",
+    message: "已切换为云端 API-only，旧本地数据已移除",
+    sourceUrl: settings.sourceUrl,
+    updatedAt: new Date().toISOString(),
+    usingCache: importedTopics.length > 0,
+  };
+  writeJSON("radarSettings", settings);
+  writeJSON("radarImportedTopics", importedTopics);
+  writeJSON("radarImportHistory", importHistory);
+  writeJSON("radarTopicSnapshots", topicSnapshots);
+  writeJSON("radarLatestImportReport", latestImportReport);
+  writeJSON("radarDataSourceStatus", dataSourceStatus);
+}
 let topics = buildTopicCollection();
 let favorites = new Set(readJSON("radarFavorites", ["t1", "t7", "t9"]));
 let selectedTopicId = "t1";
 let alertsRead = new Set(readJSON("radarAlertsRead", []));
 let storyCards = readJSON("radarStoryCards", seedStoryCards());
+const cloudTopicIds = new Set(importedTopics.map((topic) => topic.id));
+const filteredStoryCards = storyCards.filter((card) => cloudTopicIds.has(card.topicId));
+if (filteredStoryCards.length !== storyCards.length) {
+  storyCards = filteredStoryCards;
+  writeJSON("radarStoryCards", storyCards);
+}
 
 const state = {
   view: "dashboard",
@@ -533,7 +293,7 @@ function bindEvents() {
 
   document.querySelector("#refreshButton").addEventListener("click", () => {
     createDailySnapshot("手动刷新");
-    toast("已完成本地数据快照、破圈判断和告警刷新。");
+    toast("已完成云端 API 数据快照、破圈判断和告警刷新。");
     renderAll();
   });
 
@@ -547,7 +307,7 @@ function bindEvents() {
       }
       input.value = "";
       renderAll();
-      toast(`已导入 ${report.accepted} 条专区话题，更新 ${report.updated} 条。`);
+      toast(`已同步 ${report.accepted} 条云端 API 话题，更新 ${report.updated} 条。`);
     } catch (error) {
       toast(error.message);
     }
@@ -584,18 +344,18 @@ function bindEvents() {
     writeJSON("radarImportedTopics", importedTopics);
     writeJSON("radarLatestImportReport", latestImportReport);
     renderAll();
-    toast(settings.useSampleData ? "已清空专区导入数据，保留内置演示样本。" : "已清空专区导入数据。");
+    toast("已清空云端 API 缓存。");
   });
 
   document.querySelector("#downloadTemplate").addEventListener("click", downloadImportTemplate);
   document.querySelector("#exportTopicsJson").addEventListener("click", () => exportTopics("json"));
   document.querySelector("#exportTopicsCsv").addEventListener("click", () => exportTopics("csv"));
   document.querySelector("#toggleSampleData").addEventListener("click", () => {
-    settings.useSampleData = !settings.useSampleData;
+    settings.useSampleData = false;
     writeJSON("radarSettings", settings);
     topics = buildTopicCollection();
     renderAll();
-    toast(settings.useSampleData ? "已开启演示样本。" : "已关闭演示样本，仅显示专区导入数据。");
+    toast("当前为云端 API-only 模式，演示样本不会参与数据。");
   });
   document.querySelector("#createSnapshot").addEventListener("click", () => {
     createDailySnapshot("手动快照");
@@ -838,13 +598,12 @@ function renderAlerts() {
 
 function renderAdmin() {
   const sources = [
-    ["截", "抖音截图/专区导出", "播放量口径", `${importedTopics.length} 条已导入`],
     ["小", "小小 API 抖音热榜", "hot_value / 非播放量", settings.sourceUrl === XXAPI_DOUYIN_HOT_URL ? "当前同步源" : "可一键同步"],
     ["热", "DailyHotApi 抖音热榜", "hot_value / 非播放量", settings.sourceUrl === DAILY_HOT_DOUYIN_URL ? "当前同步源" : "备用"],
     ["天", "天聚抖音热搜榜", "hotindex / 需 key", settings.sourceUrl.includes("apis.tianapi.com") ? "当前同步源" : "可手动配置"],
-    ["授", "授权补充数据", "已授权", "播放/互动补充"],
-    ["题", "内部选题题库", "非真实热度", "仅用于垂类扩展"],
-    ["快", "本地快照库", "浏览器存储", `${topicSnapshots.length} 次快照`],
+    ["云", "腾讯云自建 API", "推荐代理", "可隐藏 key"],
+    ["缓", "云端 API 缓存", "浏览器存储", `${importedTopics.length} 条`],
+    ["快", "云端快照库", "浏览器存储", `${topicSnapshots.length} 次快照`],
   ];
   document.querySelector("#sourceList").innerHTML = sources
     .map(
@@ -866,7 +625,7 @@ function renderImportReport() {
     node.innerHTML = `
       <div class="report-grid">
         <div class="report-item"><span>导入状态</span><strong>待导入</strong></div>
-        <div class="report-item"><span>专区话题</span><strong>${importedTopics.length}</strong></div>
+        <div class="report-item"><span>云端话题</span><strong>${importedTopics.length}</strong></div>
         <div class="report-item"><span>当前话题</span><strong>${topics.length}</strong></div>
         <div class="report-item"><span>破圈话题</span><strong>${topics.filter(isBreakthrough).length}</strong></div>
       </div>
@@ -895,8 +654,8 @@ function renderDataHealth() {
   const storageBytes = roughStorageBytes();
   node.innerHTML = `
     <div class="health-grid">
-      <div class="health-item"><span>数据模式</span><strong>${settings.useSampleData ? "专区+样本" : "仅专区"}</strong></div>
-      <div class="health-item"><span>本地占用</span><strong>${formatBytes(storageBytes)}</strong></div>
+      <div class="health-item"><span>数据模式</span><strong>云端 API-only</strong></div>
+      <div class="health-item"><span>API缓存占用</span><strong>${formatBytes(storageBytes)}</strong></div>
       <div class="health-item"><span>最近快照</span><strong>${latestSnapshot ? dateFormatter.format(new Date(latestSnapshot.createdAt)) : "暂无"}</strong></div>
       <div class="health-item"><span>收藏话题</span><strong>${favorites.size}</strong></div>
     </div>
@@ -931,7 +690,7 @@ function buildSourceStatusHtml() {
     <div class="status-item ${className}"><span>同步状态</span><strong>${status.message || "等待同步"}</strong></div>
     <div class="status-item"><span>数据源</span><strong>${status.sourceUrl || settings.sourceUrl || "未配置"}</strong></div>
     <div class="status-item"><span>最近同步</span><strong>${status.updatedAt ? dateFormatter.format(new Date(status.updatedAt)) : "暂无"}</strong></div>
-    <div class="status-item ${status.usingCache ? "status-warn" : ""}"><span>缓存回退</span><strong>${status.usingCache ? "可用" : "未使用"}</strong></div>
+    <div class="status-item ${status.usingCache ? "status-warn" : ""}"><span>API缓存</span><strong>${status.usingCache ? "可用" : "未使用"}</strong></div>
   `;
 }
 
@@ -939,7 +698,7 @@ function renderImportHistory() {
   const node = document.querySelector("#importHistory");
   if (!node) return;
   if (importHistory.length === 0) {
-    node.innerHTML = `<div class="history-item"><div><strong>暂无导入记录</strong><p>粘贴或选择专区文件后会自动生成记录。</p></div><span class="tag">empty</span></div>`;
+    node.innerHTML = `<div class="history-item"><div><strong>暂无同步记录</strong><p>同步云端 API 后会自动生成记录。</p></div><span class="tag">empty</span></div>`;
     return;
   }
   node.innerHTML = importHistory
@@ -1248,56 +1007,7 @@ function buildHooks(topic) {
 }
 
 function seedStoryCards() {
-  return [
-    {
-      id: "idea-seed-1",
-      topicId: "t7",
-      topicTitle: "重生后先离婚再暴富",
-      title: "离婚当天，我绑定财富系统",
-      genre: "恋爱婚姻",
-      audience: "24-45 女频短剧用户",
-      owner: "周编剧",
-      status: "待评审",
-      logline: "女主重生后拒绝内耗婚姻，靠预判能力拿下第一桶金，前夫家族开始反向求和。",
-      conflict: "女性及时止损与财富自主。",
-      hooks: ["婚礼纪念日提出离婚", "系统奖励第一笔资金", "前夫发现她才是项目关键人"],
-      risks: ["题材同质化"],
-      source: "专区导出 + 授权补充",
-      createdAt: "2026-07-05T10:55:00+08:00",
-    },
-    {
-      id: "idea-seed-2",
-      topicId: "t9",
-      topicTitle: "废柴男主其实是副本管理员",
-      title: "副本开局，我拥有后台权限",
-      genre: "逆袭复仇",
-      audience: "18-40 男频爽剧用户",
-      owner: "林制片",
-      status: "已通过",
-      logline: "被队友抛弃的男主发现自己能修改副本规则，从最低级身份一路反杀。",
-      conflict: "隐藏身份与规则碾压。",
-      hooks: ["被队友锁进死局", "第一次修改规则", "反派发现他不是玩家"],
-      risks: ["暴力尺度", "世界观解释成本"],
-      source: "专区导出 + 授权补充",
-      createdAt: "2026-07-05T10:58:00+08:00",
-    },
-    {
-      id: "idea-seed-3",
-      topicId: "t12",
-      topicTitle: "反派妈妈重回女儿十七岁",
-      title: "妈妈重生后，先向女儿道歉",
-      genre: "家庭伦理",
-      audience: "25-50 家庭情感用户",
-      owner: "陈策划",
-      status: "需修改",
-      logline: "强势母亲回到女儿十七岁，想改写悲剧，却发现真正要改变的是控制欲。",
-      conflict: "亲情弥补与边界重建。",
-      hooks: ["母亲醒在女儿高考前", "第一次没有替女儿做决定", "女儿发现母亲知道未来"],
-      risks: ["家庭议题尺度"],
-      source: "专区导出 + 授权补充",
-      createdAt: "2026-07-05T11:02:00+08:00",
-    },
-  ];
+  return [];
 }
 
 function buildAlerts() {
@@ -1315,10 +1025,12 @@ function buildAlerts() {
 }
 
 function saveSourceSettings() {
-  settings.sourceUrl = document.querySelector("#dataSourceUrl").value.trim();
-  settings.sourceKind = document.querySelector("#dataSourceKind").value;
+  settings.sourceUrl = migrateCloudSourceUrl(document.querySelector("#dataSourceUrl").value.trim());
+  settings.sourceKind = isKnownDouyinHotApi(settings.sourceUrl) ? "json" : document.querySelector("#dataSourceKind").value;
   settings.autoSyncSource = document.querySelector("#autoSyncSource").checked;
   settings.tianApiKey = document.querySelector("#tianApiKey").value.trim();
+  document.querySelector("#dataSourceUrl").value = settings.sourceUrl;
+  document.querySelector("#dataSourceKind").value = settings.sourceKind;
   writeJSON("radarSettings", settings);
   renderSourceStatus();
   toast("数据源配置已保存。");
@@ -1359,8 +1071,47 @@ function buildTianApiUrl(key) {
   return url.toString();
 }
 
+function migrateCloudSourceUrl(url) {
+  if (!url || url === "./data/topics.csv" || url === "./data/douyin-topics.csv" || url === DAILY_HOT_DOUYIN_URL) return XXAPI_DOUYIN_HOT_URL;
+  return isCloudApiSource(url) ? url : "";
+}
+
+function isCloudApiSource(url) {
+  return /^https?:\/\//i.test(String(url || ""));
+}
+
+function isKnownDouyinHotApi(url) {
+  const sourceUrl = String(url || "");
+  return (
+    sourceUrl.includes("api-hot.imsyy.top/douyin") ||
+    sourceUrl.includes("v2.xxapi.cn/api/douyinhot") ||
+    sourceUrl.includes("apis.tianapi.com/douyinhot")
+  );
+}
+
+function isCloudApiTopic(topic) {
+  return isCloudApiSource(topic?.sourceUrl) || /API|Api|api|热榜|热搜/.test(`${topic?.source || ""} ${topic?.sourceAuth || ""}`);
+}
+
 async function syncConfiguredSource(reason, options = {}) {
   saveSourceSettingsWithoutToast();
+  settings.sourceUrl = migrateCloudSourceUrl(settings.sourceUrl);
+  if (isKnownDouyinHotApi(settings.sourceUrl)) settings.sourceKind = "json";
+  document.querySelector("#dataSourceUrl").value = settings.sourceUrl;
+  document.querySelector("#dataSourceKind").value = settings.sourceKind || "json";
+  if (!isCloudApiSource(settings.sourceUrl)) {
+    dataSourceStatus = {
+      state: "failed",
+      message: "仅支持云端 API URL",
+      sourceUrl: settings.sourceUrl,
+      updatedAt: new Date().toISOString(),
+      usingCache: importedTopics.length > 0,
+    };
+    writeJSON("radarDataSourceStatus", dataSourceStatus);
+    renderSourceStatus();
+    if (!options.silent) toast("请填写 http(s) 云端 API 地址。");
+    return null;
+  }
   if (!settings.sourceUrl) {
     dataSourceStatus = {
       state: "idle",
@@ -1427,10 +1178,12 @@ async function syncConfiguredSource(reason, options = {}) {
 }
 
 function saveSourceSettingsWithoutToast() {
-  settings.sourceUrl = document.querySelector("#dataSourceUrl").value.trim();
-  settings.sourceKind = document.querySelector("#dataSourceKind").value;
+  settings.sourceUrl = migrateCloudSourceUrl(document.querySelector("#dataSourceUrl").value.trim());
+  settings.sourceKind = isKnownDouyinHotApi(settings.sourceUrl) ? "json" : document.querySelector("#dataSourceKind").value;
   settings.autoSyncSource = document.querySelector("#autoSyncSource").checked;
   settings.tianApiKey = document.querySelector("#tianApiKey").value.trim();
+  document.querySelector("#dataSourceUrl").value = settings.sourceUrl;
+  document.querySelector("#dataSourceKind").value = settings.sourceKind;
   writeJSON("radarSettings", settings);
 }
 
@@ -1452,7 +1205,8 @@ function resolveSourceKind(text, kind, url, contentType) {
 }
 
 function buildTopicCollection() {
-  return [...importedTopics, ...(settings.useSampleData ? baseTopics : [])];
+  settings.useSampleData = false;
+  return importedTopics.filter(isCloudApiTopic);
 }
 
 function getCategoryOptions() {
@@ -1477,6 +1231,9 @@ function importZoneText(raw, sourceName) {
 }
 
 function importZoneRows(rows, sourceName, meta = {}) {
+  if (!isCloudApiSource(meta.sourceUrl)) {
+    throw new Error("当前为云端 API-only 模式，已拒绝本地/手动导入数据。");
+  }
   const errors = [];
   const normalized = rows
     .map((row, index) => {
@@ -1590,7 +1347,7 @@ function normalizeDouyinHotRows(payload, url = "") {
       collectedAt: rowCollectedAt,
       firstSeenDays: 1,
       sentiment: `${provider.name}条目，仅表示热榜热度，不代表话题播放量。`,
-      opportunity: "可作为当天热点发现入口；若要判断破圈话题度，需要再用抖音话题页截图、专区导出或授权接口补充播放量。",
+      opportunity: "可作为当天热点发现入口；若要判断破圈话题度，需要再接入授权云端 API 或腾讯云补充接口获取播放量。",
       related: [hotUrl, item.word_cover?.url_list?.[0]].filter(Boolean).join("|"),
       videos: [hotUrl].filter(Boolean).join("|"),
       risks: `非播放量口径|${provider.risk}|需复核来源稳定性`,
@@ -1733,8 +1490,8 @@ function normalizeZoneRow(row, index) {
   const rank = normalizeNumber(readField(row, ["rank", "排名", "榜单排名"])) || index + 1;
   const rankChange = normalizeNumber(readField(row, ["rankChange", "rank_change", "排名变化", "上升名次"])) || 0;
   const collectedAt = readField(row, ["collectedAt", "collected_at", "采集时间", "导出时间"]) || new Date().toISOString();
-  const source = readField(row, ["source", "来源", "数据来源"]) || "专区导入";
-  const sourceAuth = readField(row, ["sourceAuth", "source_auth", "授权状态", "数据口径"]) || "专区授权";
+  const source = readField(row, ["source", "来源", "数据来源"]) || "云端 API";
+  const sourceAuth = readField(row, ["sourceAuth", "source_auth", "授权状态", "数据口径"]) || "云端 API 热度口径";
   const isInternalBank = sourceAuth.includes("非热度口径");
   const id = `zone-${stableSlug(title)}-${Date.now()}-${index}`;
   return {
@@ -1742,7 +1499,7 @@ function normalizeZoneRow(row, index) {
     title,
     platform: readField(row, ["platform", "平台"]) || "抖音",
     category,
-    tags: tags.length ? tags : [category, "专区导入"],
+    tags: tags.length ? tags : [category, "云端API"],
     heat,
     playCount: playCount || null,
     influenceIndex,
@@ -1755,10 +1512,10 @@ function normalizeZoneRow(row, index) {
     trend: buildImportedTrend(heat, rankChange),
     sentiment:
       readField(row, ["sentiment", "情绪摘要", "用户情绪"]) ||
-      (isInternalBank ? "内部分类题库，未接入真实用户情绪。" : "专区导入话题，建议结合评论样本补充用户情绪、争议点和共鸣关键词。"),
+      (isInternalBank ? "云端 API 未提供用户情绪字段。" : "云端 API 话题，建议结合评论样本补充用户情绪、争议点和共鸣关键词。"),
     opportunity:
       readField(row, ["opportunity", "改编机会", "短剧机会"]) ||
-      (isInternalBank ? "可作为垂类检索和选题发散，真实热度需用专区数据复核。" : `可围绕「${title}」提炼身份落差、强冲突和前三集反转，生成短剧选题卡后再细化人物关系。`),
+      (isInternalBank ? "可作为云端热榜线索，真实播放量需用授权数据复核。" : `可围绕「${title}」提炼身份落差、强冲突和前三集反转，生成短剧选题卡后再细化人物关系。`),
     related: normalizeTopicList(readField(row, ["related", "相关话题", "话题簇"])).slice(0, 4),
     videos: normalizeTopicList(readField(row, ["videos", "代表内容", "代表视频"])).slice(0, 4),
     risks: normalizeTags(readField(row, ["risks", "风险", "风险提示"])).slice(0, 4),
