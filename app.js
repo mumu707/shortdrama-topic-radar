@@ -320,6 +320,7 @@ const hasCustomSourceUrl = hasStoredSourceUrl && storedSettings.sourceUrl.trim()
 let settings = { ...defaultSettings, ...storedSettings };
 settings.useSampleData = hasCustomSourceUrl ? settings.useSampleData === true : defaultSettings.useSampleData;
 settings.sourceUrl = hasCustomSourceUrl ? storedSettings.sourceUrl.trim() : defaultSettings.sourceUrl;
+if (settings.sourceUrl === DAILY_HOT_DOUYIN_URL) settings.sourceUrl = XXAPI_DOUYIN_HOT_URL;
 settings.sourceKind = hasCustomSourceUrl ? settings.sourceKind || defaultSettings.sourceKind : defaultSettings.sourceKind;
 settings.autoSyncSource = hasCustomSourceUrl ? settings.autoSyncSource !== false : defaultSettings.autoSyncSource;
 let importedTopics = readJSON("radarImportedTopics", []);
