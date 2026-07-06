@@ -162,6 +162,7 @@
                 </div>
                 <button class="text-button" id="resetFilters"><i data-lucide="rotate-ccw"></i>重置筛选</button>
               </div>
+              <div class="association-board" id="associationBoard"></div>
               <div class="topic-list" id="topicList"></div>
             </section>
 
@@ -267,6 +268,7 @@
                 <div class="button-row">
                   <button class="primary-button" id="syncSourceNow" type="button"><i data-lucide="cloud-download"></i>立即同步</button>
                   <button class="text-button" id="syncDailyHotDouyinAdmin" type="button"><i data-lucide="flame"></i>同步抖音热榜</button>
+                  <button class="text-button" id="syncTianApiHot" type="button"><i data-lucide="key-round"></i>同步天聚热榜</button>
                 </div>
               </div>
               <div class="source-config-grid">
@@ -286,6 +288,10 @@
                 <label class="checkbox">
                   <input id="autoSyncSource" type="checkbox" />
                   打开网页自动同步
+                </label>
+                <label>
+                  天聚 API Key
+                  <input id="tianApiKey" type="password" autocomplete="off" placeholder="填写后可同步天聚抖音热搜榜" />
                 </label>
               </div>
               <div class="source-status" id="adminSourceStatus"></div>

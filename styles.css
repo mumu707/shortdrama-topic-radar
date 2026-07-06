@@ -627,6 +627,100 @@ textarea {
   min-height: 16px;
 }
 
+.association-board {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid #e3dccf;
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.association-board:empty {
+  display: none;
+}
+
+.association-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.association-header strong,
+.association-header span {
+  display: block;
+}
+
+.association-header span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.association-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.assoc-chip {
+  border: 1px solid #d9d0c2;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.assoc-chip:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.association-rank {
+  display: grid;
+  gap: 7px;
+}
+
+.assoc-rank-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px;
+  background: #f7f4ed;
+  text-align: left;
+}
+
+.assoc-rank-item span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #2f625f;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.assoc-rank-item strong,
+.assoc-rank-item small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assoc-rank-item small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+}
+
 .topic-list {
   display: grid;
   gap: 10px;
@@ -1056,7 +1150,8 @@ textarea {
 
   .topbar,
   .top-actions,
-  .panel-title {
+  .panel-title,
+  .association-header {
     align-items: stretch;
     flex-direction: column;
   }

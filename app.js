@@ -13,12 +13,44 @@ const defaultSettings = {
   sourceKind: "csv",
   autoSyncSource: true,
   useSampleData: false,
+  tianApiKey: "",
 };
 
 const MAX_RENDERED_TOPICS = 300;
 const DAILY_HOT_DOUYIN_URL = "https://api-hot.imsyy.top/douyin";
 const XXAPI_DOUYIN_HOT_URL = "https://v2.xxapi.cn/api/douyinhot";
-const TIANAPI_DOUYIN_HOT_URL = "https://apis.tianapi.com/douyinhot/index?key=YOUR_TIANAPI_KEY";
+const TIANAPI_DOUYIN_HOT_URL = "https://apis.tianapi.com/douyinhot/index";
+
+const intentLexicon = [
+  {
+    name: "游戏",
+    terms: ["游戏", "手游", "端游", "电竞", "3A", "NPC", "副本", "Steam", "三角洲", "射击", "开放世界", "宝可梦"],
+  },
+  {
+    name: "动漫",
+    terms: ["动漫", "动画", "国漫", "二次元", "番剧", "漫画", "IP", "角色", "宝可梦", "港漫"],
+  },
+  {
+    name: "影视",
+    terms: ["影视", "电影", "美剧", "港剧", "TVB", "剧本", "经典电影", "演员", "剧情", "短剧"],
+  },
+  {
+    name: "恋爱婚姻",
+    terms: ["恋爱", "婚姻", "离婚", "前夫", "复合", "甜宠", "CP", "暗恋", "亲密"],
+  },
+  {
+    name: "逆袭复仇",
+    terms: ["逆袭", "复仇", "反杀", "重生", "爽文", "黑化", "洗白", "打脸"],
+  },
+  {
+    name: "悬疑惊悚",
+    terms: ["悬疑", "惊悚", "恐怖", "微恐", "盗墓", "解谜", "怪谈", "狼人", "吸血鬼"],
+  },
+  {
+    name: "战争竞技",
+    terms: ["战争", "竞技", "体育", "篮球", "足球", "枪战", "士兵", "战地", "三角洲"],
+  },
+];
 
 const defaultCategories = [
   "全部",
@@ -377,6 +409,7 @@ function hydrateControls() {
   document.querySelector("#dataSourceUrl").value = settings.sourceUrl;
   document.querySelector("#dataSourceKind").value = settings.sourceKind;
   document.querySelector("#autoSyncSource").checked = settings.autoSyncSource;
+  document.querySelector("#tianApiKey").value = settings.tianApiKey || "";
 }
 
 function bindEvents() {
@@ -491,10 +524,12 @@ function bindEvents() {
   document.querySelector("#dataSourceUrl").addEventListener("change", saveSourceSettings);
   document.querySelector("#dataSourceKind").addEventListener("change", saveSourceSettings);
   document.querySelector("#autoSyncSource").addEventListener("change", saveSourceSettings);
+  document.querySelector("#tianApiKey").addEventListener("change", saveSourceSettings);
   document.querySelector("#syncSourceNow").addEventListener("click", () => syncConfiguredSource("手动同步"));
   document.querySelector("#dashboardSyncSource").addEventListener("click", () => syncConfiguredSource("首页同步"));
   document.querySelector("#syncDailyHotDouyin").addEventListener("click", syncDailyHotDouyin);
   document.querySelector("#syncDailyHotDouyinAdmin").addEventListener("click", syncDailyHotDouyin);
+  document.querySelector("#syncTianApiHot").addEventListener("click", syncTianApiHot);
 
   document.querySelector("#refreshButton").addEventListener("click", () => {
     createDailySnapshot("手动刷新");
@@ -670,6 +705,7 @@ function renderTopics() {
     results.length > MAX_RENDERED_TOPICS
       ? `${results.length} 个话题，显示前 ${MAX_RENDERED_TOPICS} 条`
       : `${results.length} 个话题`;
+  renderAssociationBoard(results);
   const selectedStillVisible = results.some((topic) => topic.id === selectedTopicId);
   if (!selectedStillVisible && results[0]) selectedTopicId = results[0].id;
 
@@ -968,19 +1004,15 @@ function renderIdeaCard(card) {
 }
 
 function filterTopics() {
-  const keywords = state.keyword.toLowerCase().split(/\s+/).filter(Boolean);
-  return topics.filter((topic) => {
-    const haystack = [
-      topic.title,
-      topic.category,
-      topic.sentiment,
-      topic.opportunity,
-      ...topic.tags,
-      ...topic.related,
-    ]
-      .join(" ")
-      .toLowerCase();
-    const keywordMatch = keywords.length === 0 || keywords.every((keyword) => haystack.includes(keyword));
+  const keywords = getQueryTokens(state.keyword);
+  const expandedTerms = expandSearchTerms(keywords, state.category);
+  return topics
+    .filter((topic) => {
+      const haystack = getTopicHaystack(topic);
+      const keywordMatch =
+        keywords.length === 0 ||
+        keywords.every((keyword) => haystack.includes(keyword)) ||
+        expandedTerms.some((term) => haystack.includes(term));
     const categoryMatch = state.category === "全部" || topic.category === state.category;
     const platformMatch = state.platform === "全部" || topic.platform === state.platform;
     const heatMatch =
@@ -996,7 +1028,135 @@ function filterTopics() {
     const breakMatch = !state.breakthroughOnly || isBreakthrough(topic);
     const favMatch = !state.favoriteOnly || favorites.has(topic.id);
     return keywordMatch && categoryMatch && platformMatch && heatMatch && timeMatch && breakMatch && favMatch;
+    })
+    .sort((a, b) => scoreTopicForSearch(b, keywords, expandedTerms) - scoreTopicForSearch(a, keywords, expandedTerms));
+}
+
+function renderAssociationBoard(results) {
+  const board = document.querySelector("#associationBoard");
+  const queryText = state.keyword || (state.category !== "全部" ? state.category : "");
+  if (!queryText) {
+    board.innerHTML = "";
+    return;
+  }
+  const tokens = getQueryTokens(queryText);
+  const intent = detectIntent(tokens, state.category);
+  const chips = buildAssociationTerms(results, intent, tokens).slice(0, 12);
+  const topTopics = results.slice(0, 5);
+  board.innerHTML = `
+    <div class="association-header">
+      <div>
+        <strong>联想搜索榜单${intent ? ` · ${intent.name}` : ""}</strong>
+        <span>按相关性、热度和榜单排名重排</span>
+      </div>
+      <button class="small-action" id="useTianApiShortcut" type="button"><i data-lucide="key-round"></i>天聚接口</button>
+    </div>
+    <div class="association-chips">
+      ${chips.map((term) => `<button class="assoc-chip" data-assoc-term="${term}">${term}</button>`).join("")}
+    </div>
+    <div class="association-rank">
+      ${topTopics
+        .map(
+          (topic, index) => `
+            <button class="assoc-rank-item" data-topic="${topic.id}">
+              <span>${index + 1}</span>
+              <strong>${topic.title}</strong>
+              <small>${topic.category} · ${topic.sourceAuth}</small>
+            </button>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+  board.querySelectorAll("[data-assoc-term]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.keyword = button.dataset.assocTerm;
+      document.querySelector("#globalSearch").value = state.keyword;
+      document.querySelector("#dashboardSearch").value = state.keyword;
+      document.querySelector("#keywordFilter").value = state.keyword;
+      renderTopics();
+    });
   });
+  board.querySelectorAll("[data-topic]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedTopicId = button.dataset.topic;
+      renderTopics();
+    });
+  });
+  board.querySelector("#useTianApiShortcut").addEventListener("click", () => {
+    setView("admin");
+    document.querySelector("#tianApiKey").focus();
+  });
+  createIcons();
+}
+
+function getTopicHaystack(topic) {
+  return normalizeSearchText([
+    topic.title,
+    topic.category,
+    topic.sentiment,
+    topic.opportunity,
+    ...topic.tags,
+    ...topic.related,
+    ...topic.videos,
+  ].join(" "));
+}
+
+function getQueryTokens(value) {
+  return normalizeSearchText(value)
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function normalizeSearchText(value) {
+  return String(value || "").toLowerCase().replace(/[，,、|/]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function detectIntent(tokens, category = "全部") {
+  const query = normalizeSearchText([...tokens, category === "全部" ? "" : category].join(" "));
+  return intentLexicon.find((intent) => intent.terms.some((term) => query.includes(term.toLowerCase()))) || null;
+}
+
+function expandSearchTerms(tokens, category = "全部") {
+  const intent = detectIntent(tokens, category);
+  return [...new Set([...(intent?.terms || []), ...tokens, category !== "全部" ? category : ""])].map(normalizeSearchText).filter(Boolean);
+}
+
+function scoreTopicForSearch(topic, keywords, expandedTerms) {
+  const title = normalizeSearchText(topic.title);
+  const category = normalizeSearchText(topic.category);
+  const tags = normalizeSearchText(topic.tags.join(" "));
+  const haystack = getTopicHaystack(topic);
+  let score = 0;
+  keywords.forEach((keyword) => {
+    if (title === keyword) score += 900;
+    else if (title.includes(keyword)) score += 520;
+    if (tags.includes(keyword)) score += 180;
+    if (category.includes(keyword)) score += 220;
+  });
+  expandedTerms.forEach((term) => {
+    if (title.includes(term)) score += 120;
+    else if (haystack.includes(term)) score += 45;
+  });
+  score += Math.min(topic.influenceIndex || topic.heat || 0, 20000000) / 50000;
+  score += Math.max(0, 80 - (topic.rank || 80));
+  if (isBreakthrough(topic)) score += 120;
+  return score;
+}
+
+function buildAssociationTerms(results, intent, tokens) {
+  const counts = new Map();
+  const seedTerms = [...(intent?.terms || []), ...tokens].filter(Boolean);
+  seedTerms.forEach((term) => counts.set(term, (counts.get(term) || 0) + 8));
+  results.slice(0, 80).forEach((topic) => {
+    [topic.category, ...topic.tags, ...topic.related].forEach((term) => {
+      const normalized = String(term || "").trim();
+      if (!normalized || normalized.startsWith("http")) return;
+      counts.set(normalized, (counts.get(normalized) || 0) + 1);
+    });
+  });
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([term]) => term);
 }
 
 function isBreakthrough(topic) {
@@ -1158,6 +1318,7 @@ function saveSourceSettings() {
   settings.sourceUrl = document.querySelector("#dataSourceUrl").value.trim();
   settings.sourceKind = document.querySelector("#dataSourceKind").value;
   settings.autoSyncSource = document.querySelector("#autoSyncSource").checked;
+  settings.tianApiKey = document.querySelector("#tianApiKey").value.trim();
   writeJSON("radarSettings", settings);
   renderSourceStatus();
   toast("数据源配置已保存。");
@@ -1172,6 +1333,30 @@ function syncDailyHotDouyin() {
   document.querySelector("#dataSourceKind").value = settings.sourceKind;
   document.querySelector("#autoSyncSource").checked = true;
   syncConfiguredSource("小小 API 抖音热榜");
+}
+
+function syncTianApiHot() {
+  const key = document.querySelector("#tianApiKey").value.trim();
+  if (!key) {
+    toast("请先填写天聚 API Key。");
+    setView("admin");
+    return;
+  }
+  settings.tianApiKey = key;
+  settings.sourceUrl = buildTianApiUrl(key);
+  settings.sourceKind = "json";
+  settings.autoSyncSource = true;
+  writeJSON("radarSettings", settings);
+  document.querySelector("#dataSourceUrl").value = settings.sourceUrl;
+  document.querySelector("#dataSourceKind").value = settings.sourceKind;
+  document.querySelector("#autoSyncSource").checked = true;
+  syncConfiguredSource("天聚数据抖音热搜榜");
+}
+
+function buildTianApiUrl(key) {
+  const url = new URL(TIANAPI_DOUYIN_HOT_URL);
+  url.searchParams.set("key", key);
+  return url.toString();
 }
 
 async function syncConfiguredSource(reason, options = {}) {
@@ -1245,6 +1430,7 @@ function saveSourceSettingsWithoutToast() {
   settings.sourceUrl = document.querySelector("#dataSourceUrl").value.trim();
   settings.sourceKind = document.querySelector("#dataSourceKind").value;
   settings.autoSyncSource = document.querySelector("#autoSyncSource").checked;
+  settings.tianApiKey = document.querySelector("#tianApiKey").value.trim();
   writeJSON("radarSettings", settings);
 }
 
