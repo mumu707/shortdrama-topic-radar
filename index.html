@@ -52,7 +52,10 @@
                 <h2>话题搜索工作台</h2>
                 <p>打开网页自动同步公开 CSV/网页表格；同步失败时继续使用本地缓存。</p>
               </div>
-              <button class="primary-button" id="dashboardSyncSource" type="button"><i data-lucide="cloud-download"></i>同步数据源</button>
+              <div class="button-row">
+                <button class="primary-button" id="dashboardSyncSource" type="button"><i data-lucide="cloud-download"></i>同步数据源</button>
+                <button class="text-button" id="syncDailyHotDouyin" type="button"><i data-lucide="flame"></i>同步抖音热榜</button>
+              </div>
             </div>
             <div class="source-status" id="sourceStatus"></div>
             <div class="quick-search-row">
@@ -261,7 +264,10 @@
                   <h2>公开数据源同步</h2>
                   <p>支持公开 CSV 链接、允许跨域访问的网页表格；登录态专区页面请复制表格内容后粘贴导入。</p>
                 </div>
-                <button class="primary-button" id="syncSourceNow" type="button"><i data-lucide="cloud-download"></i>立即同步</button>
+                <div class="button-row">
+                  <button class="primary-button" id="syncSourceNow" type="button"><i data-lucide="cloud-download"></i>立即同步</button>
+                  <button class="text-button" id="syncDailyHotDouyinAdmin" type="button"><i data-lucide="flame"></i>同步抖音热榜</button>
+                </div>
               </div>
               <div class="source-config-grid">
                 <label>

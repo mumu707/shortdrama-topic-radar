@@ -16,9 +16,11 @@ const defaultSettings = {
 };
 
 const MAX_RENDERED_TOPICS = 300;
+const DAILY_HOT_DOUYIN_URL = "https://api-hot.imsyy.top/douyin";
 
 const defaultCategories = [
   "全部",
+  "抖音热榜",
   "微恐",
   "恋爱婚姻",
   "港漫",
@@ -488,6 +490,8 @@ function bindEvents() {
   document.querySelector("#autoSyncSource").addEventListener("change", saveSourceSettings);
   document.querySelector("#syncSourceNow").addEventListener("click", () => syncConfiguredSource("手动同步"));
   document.querySelector("#dashboardSyncSource").addEventListener("click", () => syncConfiguredSource("首页同步"));
+  document.querySelector("#syncDailyHotDouyin").addEventListener("click", syncDailyHotDouyin);
+  document.querySelector("#syncDailyHotDouyinAdmin").addEventListener("click", syncDailyHotDouyin);
 
   document.querySelector("#refreshButton").addEventListener("click", () => {
     createDailySnapshot("手动刷新");
@@ -795,9 +799,10 @@ function renderAlerts() {
 
 function renderAdmin() {
   const sources = [
-    ["区", "抖音专区导出", "专区授权", `${importedTopics.length} 条已导入`],
+    ["截", "抖音截图/专区导出", "播放量口径", `${importedTopics.length} 条已导入`],
+    ["热", "DailyHotApi 抖音热榜", "hot_value / 非播放量", settings.sourceUrl === DAILY_HOT_DOUYIN_URL ? "当前同步源" : "可一键同步"],
     ["授", "授权补充数据", "已授权", "播放/互动补充"],
-    ["样", "内置演示样本", settings.useSampleData ? "已启用" : "已关闭", `${baseTopics.length} 条样本`],
+    ["题", "内部选题题库", "非真实热度", "仅用于垂类扩展"],
     ["快", "本地快照库", "浏览器存储", `${topicSnapshots.length} 次快照`],
   ];
   document.querySelector("#sourceList").innerHTML = sources
@@ -1153,6 +1158,17 @@ function saveSourceSettings() {
   toast("数据源配置已保存。");
 }
 
+function syncDailyHotDouyin() {
+  settings.sourceUrl = DAILY_HOT_DOUYIN_URL;
+  settings.sourceKind = "json";
+  settings.autoSyncSource = true;
+  writeJSON("radarSettings", settings);
+  document.querySelector("#dataSourceUrl").value = settings.sourceUrl;
+  document.querySelector("#dataSourceKind").value = settings.sourceKind;
+  document.querySelector("#autoSyncSource").checked = true;
+  syncConfiguredSource("DailyHotApi 抖音热榜");
+}
+
 async function syncConfiguredSource(reason, options = {}) {
   saveSourceSettingsWithoutToast();
   if (!settings.sourceUrl) {
@@ -1229,7 +1245,7 @@ function saveSourceSettingsWithoutToast() {
 
 function parseSourceText(text, kind, url, contentType) {
   const resolved = resolveSourceKind(text, kind, url, contentType);
-  if (resolved === "json") return parseZoneJSON(text);
+  if (resolved === "json") return parseZoneJSON(text, url);
   if (resolved === "html") return parseZoneHTML(text);
   return parseZoneCSV(text);
 }
@@ -1318,12 +1334,50 @@ function parseZoneImport(raw) {
   return parseZoneRows(raw).map(normalizeZoneRow).filter(Boolean);
 }
 
-function parseZoneJSON(text) {
+function parseZoneJSON(text, url = "") {
   const value = JSON.parse(text);
+  if (isDailyHotDouyinPayload(value, url)) return normalizeDailyHotDouyinRows(value);
   if (Array.isArray(value)) return value;
   if (Array.isArray(value.topics)) return value.topics;
   if (Array.isArray(value.data)) return value.data;
   return [value];
+}
+
+function isDailyHotDouyinPayload(value, url = "") {
+  return (
+    value &&
+    !Array.isArray(value) &&
+    Array.isArray(value.data) &&
+    (value.name === "douyin" || String(url).includes("api-hot.imsyy.top/douyin"))
+  );
+}
+
+function normalizeDailyHotDouyinRows(payload) {
+  const collectedAt = new Date().toISOString();
+  return payload.data.map((item, index) => {
+    const hotValue = Number(item.hot ?? item.hot_value ?? item.heat ?? 0) || 0;
+    const title = item.title || item.word || item.name || `抖音热榜 ${index + 1}`;
+    return {
+      title,
+      platform: "抖音",
+      category: "抖音热榜",
+      tags: ["抖音热榜", "DailyHotApi", "hot_value", payload.type || "热榜"].join("|"),
+      heat: hotValue,
+      playCount: "",
+      influenceIndex: hotValue,
+      rank: index + 1,
+      rankChange: 0,
+      source: "DailyHotApi / 抖音热点榜",
+      sourceAuth: "DailyHotApi 抖音热榜 hot_value / 非播放量口径",
+      collectedAt,
+      firstSeenDays: 1,
+      sentiment: "DailyHotApi 抖音热榜条目，仅表示热榜热度，不代表话题播放量。",
+      opportunity: "可作为当天热点发现入口；若要判断破圈话题度，需要再用抖音话题页截图、专区导出或授权接口补充播放量。",
+      related: [item.url, item.mobileUrl].filter(Boolean).join("|"),
+      videos: [item.url || item.mobileUrl || ""].filter(Boolean).join("|"),
+      risks: "非播放量口径|第三方聚合接口|需复核来源稳定性",
+    };
+  });
 }
 
 function parseZoneCSV(text) {

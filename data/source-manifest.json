@@ -26,6 +26,19 @@
       },
       "compliance": "仅用于编剧选题搜索和垂类扩展，不用于宣称真实话题播放量。",
       "verification": "已按 CSV 字段校验：22000 行、22 类、每类 1000、无重复标题、无伪播放量。"
+    },
+    {
+      "file": "https://api-hot.imsyy.top/douyin",
+      "status": "optional-live-hotlist-source",
+      "source": "imsyy/DailyHotApi Douyin route",
+      "collectionMethod": "Fetch DailyHotApi JSON and normalize title, hot_value, rank, url into local search index.",
+      "metricFields": {
+        "playCount": "empty; DailyHotApi does not provide topic playback count",
+        "heat": "DailyHotApi hot_value mapped to local heat",
+        "influenceIndex": "DailyHotApi hot_value mapped to local influenceIndex"
+      },
+      "compliance": "Third-party aggregated hot list. Use as trend discovery only; playback-count validation still requires Douyin topic page screenshot, authorized export, or official/authorized API.",
+      "verification": "Adapter accepts DailyHotApi fields title/word/name and hot/hot_value/heat; rows are marked as non-playback metric."
     }
   ]
 }
